@@ -1,5 +1,13 @@
-/venv
-/pruebas_autenticacion.py
-/pruebas_resenas.py
-**/__pycache__/
-.vscode
+# Entornos virtuales
+venv/
+
+# Archivos de pruebas
+pruebas_autenticacion.py
+pruebas_resenas.py
+
+# Pycache (TODOS)
+__pycache__/
+*.py[cod]
+
+# Configuración de VSCode
+.vscode/
