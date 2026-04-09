@@ -15,8 +15,9 @@ mysql = MySQL(app)
 # Importamos y registramos los Blueprints (Nuestras APIs)
 # -------------------------------------------------------------
 from routes.peliculas import peliculas_bp
+from routes.series import series_bp
 app.register_blueprint(peliculas_bp)
-
+app.register_blueprint(series_bp)
 
 # Encendemos el servidor
 if __name__ == '__main__':
