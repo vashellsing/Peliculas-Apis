@@ -124,3 +124,17 @@ INSERT INTO Carteleras (id_peliculaCartelera, id_cineCartelera, fecha_horaCartel
 (8, 2, '2026-04-16 20:15:00', 'Idioma Original'),    
 (10, 1, '2026-04-17 14:00:00', 'Doblada al Espanol'),
 (2, 2, '2026-04-17 16:30:00', 'Doblada al Espanol'); 
+
+-- Estos son los datos de la tabla series
+INSERT INTO Series (tituloSerie, titulo_originalSerie, sinopsisSerie, anio_lanzamientoSerie, temporadasSerie, actoresSerie, generoSerie, idiomaSerie) 
+VALUES 
+('Breaking Bad', 'Breaking Bad', 'Un profesor de química con cáncer terminal se asocia con un exalumno para fabricar y vender metanfetamina para asegurar el futuro de su familia.', 2008, 5, 'Bryan Cranston, Aaron Paul, Anna Gunn', 'Drama', 'Ingles'),
+('El juego del calamar', 'Ojingeo Geim', 'Cientos de jugadores endeudados aceptan una extraña invitación para competir en juegos infantiles tradicionales con un premio millonario y consecuencias letales.', 2021, 2, 'Lee Jung-jae, Park Hae-soo, Jung Ho-yeon', 'Drama', 'Coreano'),
+('Dark', 'Dark', 'La desaparición de dos niños en un pequeño pueblo alemán expone las dobles vidas y las relaciones rotas entre cuatro familias a través de viajes en el tiempo.', 2017, 3, 'Louis Hofmann, Karoline Eichhorn, Lisa Vicari', 'Ciencia Ficcion', 'Otro'),
+('La Casa de Papel', 'La Casa de Papel', 'Un grupo de ladrones muy peculiares y con nombres de ciudades asaltan la Fábrica Nacional de Moneda y Timbre en España para llevar a cabo el atraco perfecto.', 2017, 5, 'Úrsula Corberó, Álvaro Morte, Itziar Ituño', 'Accion', 'Espanol'),
+('Ataque a los Titanes', 'Shingeki no Kyojin', 'La humanidad vive encerrada en ciudades amuralladas para protegerse de los Titanes, criaturas gigantes que devoran humanos sin razón aparente.', 2013, 4, 'Yuki Kaji, Yui Ishikawa, Marina Inoue', 'Animacion', 'Japones'),
+('The Office', 'The Office', 'Un falso documental que retrata el día a día, las absurdidades y las relaciones de los excéntricos empleados de la empresa papelera Dunder Mifflin.', 2005, 9, 'Steve Carell, Rainn Wilson, John Krasinski', 'Comedia', 'Ingles'),
+('Lupin', 'Lupin', 'Inspirado en las clásicas aventuras de Arsène Lupin, el carismático ladrón de guante blanco Assane Diop busca vengar a su padre por una injusticia.', 2021, 3, 'Omar Sy, Ludivine Sagnier, Clotilde Hesme', 'Accion', 'Frances'),
+('Stranger Things', 'Stranger Things', 'Tras la desaparición de un niño, un pueblo descubre un misterio que involucra experimentos gubernamentales secretos, fuerzas sobrenaturales y a una niña muy extraña.', 2016, 4, 'Millie Bobby Brown, Finn Wolfhard, Winona Ryder', 'Ciencia Ficcion', 'Ingles'),
+('Los Simuladores', 'Los Simuladores', 'Cuatro socios resuelven problemas inéditos de sus clientes montando operativos simulados para engañar a quienes los causan.', 2002, 2, 'Federico D''Elía, Alejandro Fiore, Diego Peretti', 'Comedia', 'Espanol'),
+('La maldición de Hill House', 'The Haunting of Hill House', 'A través de flashbacks, se exploran los traumas que persiguen a unos hermanos años después de que abandonaran la antigua mansión embrujada donde crecieron.', 2018, 1, 'Michiel Huisman, Carla Gugino, Victoria Pedretti', 'Terror', 'Ingles');
