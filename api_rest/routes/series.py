@@ -9,7 +9,7 @@ series_bp = Blueprint("series_bp", __name__)
 # ==========================================
 @series_bp.route("/series", methods=["GET"])
 def obtener_series():
-    from app import mysql
+    from app_series import mysql
 
     try:
         cur = mysql.connection.cursor()
@@ -49,7 +49,7 @@ def obtener_series():
 # ==========================================
 @series_bp.route("/series/idioma", methods=["GET"])
 def buscar_por_idioma():
-    from app import mysql
+    from app_series import mysql
 
     # Capturamos el idioma enviado en la URL, ej: /series/idioma?q=Ingles
     idioma_buscado = request.args.get("q")

@@ -314,3 +314,4 @@ def eliminar_favorito(id_pelicula):
         return jsonify({"mensaje": "Película eliminada de favoritos exitosamente"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
