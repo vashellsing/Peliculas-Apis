@@ -138,3 +138,27 @@ VALUES
 ('Stranger Things', 'Stranger Things', 'Tras la desaparición de un niño, un pueblo descubre un misterio que involucra experimentos gubernamentales secretos, fuerzas sobrenaturales y a una niña muy extraña.', 2016, 4, 'Millie Bobby Brown, Finn Wolfhard, Winona Ryder', 'Ciencia Ficcion', 'Ingles'),
 ('Los Simuladores', 'Los Simuladores', 'Cuatro socios resuelven problemas inéditos de sus clientes montando operativos simulados para engañar a quienes los causan.', 2002, 2, 'Federico D''Elía, Alejandro Fiore, Diego Peretti', 'Comedia', 'Espanol'),
 ('La maldición de Hill House', 'The Haunting of Hill House', 'A través de flashbacks, se exploran los traumas que persiguen a unos hermanos años después de que abandonaran la antigua mansión embrujada donde crecieron.', 2018, 1, 'Michiel Huisman, Carla Gugino, Victoria Pedretti', 'Terror', 'Ingles');
+
+
+-- DATOS DE CARTELERA
+
+INSERT INTO Carteleras (id_peliculaCartelera, id_cineCartelera, fecha_horaCartelera, idioma_proyeccionCartelera) VALUES
+(3, 1, '2026-04-18 15:00:00', 'Doblada al Espanol'),
+(6, 1, '2026-04-18 17:30:00', 'Subtitulada'),
+(7, 2, '2026-04-18 20:00:00', 'Doblada al Espanol'),
+
+(9, 2, '2026-04-19 14:00:00', 'Idioma Original'),
+(2, 1, '2026-04-19 16:15:00', 'Doblada al Espanol'),
+(5, 2, '2026-04-19 18:45:00', 'Subtitulada'),
+
+(8, 1, '2026-04-20 15:30:00', 'Idioma Original'),
+(1, 2, '2026-04-20 18:00:00', 'Doblada al Espanol'),
+(4, 1, '2026-04-20 20:30:00', 'Subtitulada'),
+
+(10, 2, '2026-04-21 14:00:00', 'Doblada al Espanol'),
+(6, 1, '2026-04-21 16:30:00', 'Subtitulada'),
+(3, 2, '2026-04-21 19:00:00', 'Doblada al Espanol'),
+
+(7, 1, '2026-04-22 15:00:00', 'Doblada al Espanol'),
+(9, 2, '2026-04-22 17:30:00', 'Idioma Original'),
+(2, 1, '2026-04-22 20:00:00', 'Doblada al Espanol');
