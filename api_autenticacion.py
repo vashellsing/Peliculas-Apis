@@ -4,7 +4,7 @@ from spyne.protocol.soap import Soap11
 from spyne.server.wsgi import WsgiApplication
 from wsgiref.simple_server import make_server
 import pymysql
-
+''' Conexión a la base de datos '''
 # conexion a bd similar a php xd
 def obtener_conexion():
     return pymysql.connect(

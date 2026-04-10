@@ -5,7 +5,7 @@ cartelera_bp = Blueprint("cartelera_bp", __name__)
 
 
 # ==========================================
-# 1. READ: TRAER TODA LA CARTELERA (GET)
+# TRAER TODA LA CARTELERA (GET)
 # ==========================================
 @cartelera_bp.route("/cartelera", methods=["GET"])
 def obtener_cartelera():
@@ -47,7 +47,7 @@ def obtener_cartelera():
 
 
 # ==========================================
-# 2. CREATE: AGREGAR NUEVA FUNCIÓN (POST)
+# AGREGAR NUEVA FUNCIÓN (POST)
 # ==========================================
 @cartelera_bp.route("/cartelera", methods=["POST"])
 def crear_funcion():
@@ -95,7 +95,7 @@ def crear_funcion():
 
 
 # ==========================================
-# 3. UPDATE: ACTUALIZAR FUNCIÓN (PUT)
+# UPDATE: ACTUALIZAR FUNCIÓN (PUT)
 # ==========================================
 @cartelera_bp.route("/cartelera/<int:id_cartelera>", methods=["PUT"])
 def actualizar_funcion(id_cartelera):
@@ -142,7 +142,7 @@ def actualizar_funcion(id_cartelera):
 
 
 # ==========================================
-# 4. DELETE: ELIMINAR FUNCIÓN (DELETE)
+# ELIMINAR FUNCIÓN (DELETE)
 # ==========================================
 @cartelera_bp.route("/cartelera/<int:id_cartelera>", methods=["DELETE"])
 def eliminar_funcion(id_cartelera):
@@ -167,7 +167,7 @@ def eliminar_funcion(id_cartelera):
 
 
 # ==========================================
-# 5. SEARCH: BUSCAR FUNCIONES POR FECHA (GET)
+# BUSCAR FUNCIONES POR FECHA (GET)
 # ==========================================
 @cartelera_bp.route("/cartelera/fecha", methods=["GET"])
 def buscar_por_fecha():
@@ -234,7 +234,7 @@ def buscar_por_fecha():
 
 
 # ==========================================
-# 6. SEARCH: BUSCAR FUNCIONES POR CINE (GET)
+# BUSCAR FUNCIONES POR CINE (GET)
 # ==========================================
 @cartelera_bp.route("/cartelera/cine", methods=["GET"])
 def buscar_por_cine():
