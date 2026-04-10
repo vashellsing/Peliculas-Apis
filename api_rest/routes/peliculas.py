@@ -7,7 +7,7 @@ peliculas_bp = Blueprint("peliculas_bp", __name__)
 # Traer TODAS las películas
 @peliculas_bp.route("/peliculas", methods=["GET"])
 def obtener_peliculas():
-    from app import mysql
+    from app_peliculas import mysql
 
     try:
         cur = mysql.connection.cursor()
@@ -50,7 +50,7 @@ def obtener_peliculas():
 # Buscar películas por TÍTULO
 @peliculas_bp.route("/peliculas/buscar", methods=["GET"])
 def buscar_por_titulo():
-    from app import mysql
+    from app_peliculas import mysql
 
     titulo_buscado = request.args.get("q")
 
@@ -109,7 +109,7 @@ def buscar_por_titulo():
 # Buscar películas por CATEGORÍA
 @peliculas_bp.route("/peliculas/categoria", methods=["GET"])
 def buscar_por_genero():
-    from app import mysql
+    from app_peliculas import mysql
 
     genero_buscado = request.args.get("q")
 
@@ -169,7 +169,7 @@ def buscar_por_genero():
 
 @peliculas_bp.route("/peliculas/agregar", methods=["POST"])
 def crear_pelicula():
-    from app import mysql
+    from app_peliculas import mysql
 
     datos = request.json
 
@@ -217,7 +217,7 @@ def crear_pelicula():
 
 @peliculas_bp.route("/favorito/add/<int:id_pelicula>", methods=["POST"])
 def agregar_favorito(id_pelicula):
-    from app import mysql
+    from app_peliculas import mysql
 
     datos = request.json
     id_usuario = datos.get("id_usuario")
@@ -246,7 +246,7 @@ def agregar_favorito(id_pelicula):
 # Mostrar favoritos de un usuario
 @peliculas_bp.route("/favoritos/usuario/<int:id_usuario>", methods=["GET"])
 def obtener_favoritos(id_usuario):
-    from app import mysql
+    from app_peliculas import mysql
 
     try:
         cur = mysql.connection.cursor()
@@ -283,7 +283,7 @@ def obtener_favoritos(id_usuario):
 # Eliminar de favoritos
 @peliculas_bp.route("/favorito/borrar/<int:id_pelicula>", methods=["DELETE"])
 def eliminar_favorito(id_pelicula):
-    from app import mysql
+    from app_peliculas import mysql
 
     datos = request.json
     id_usuario = datos.get("id_usuario")
