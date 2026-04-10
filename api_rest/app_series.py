@@ -14,11 +14,10 @@ mysql = MySQL(app)
 # -------------------------------
 # Importamos y registramos los Blueprints (Nuestras APIs)
 # -------------------------------
-from routes.peliculas import peliculas_bp
-app.register_blueprint(peliculas_bp)
-
+from routes.series import series_bp
+app.register_blueprint(series_bp)
 
 # Encendemos el servidor
 if __name__ == '__main__':
-    print("Iniciando la API REST de Peliculas en el puerto 5000...")
-    app.run(debug=True, port=5000)
+    print("Iniciando la API REST de Peliculas en el puerto 5001...")
+    app.run(debug=True, port=5001)
