@@ -43,7 +43,7 @@ def obtener_peliculas():
 
 # Buscar películas por coincidencia parcial
 # ==========================================
-# ENDPOINTS DE BÚSQUEDA Usando Query ?q=
+# ENDPOINTS DE BUSQUEDA Usando Query ?q=
 # ==========================================
 
 
@@ -107,6 +107,7 @@ def buscar_por_titulo():
 
 
 # Buscar películas por CATEGORÍA
+
 @peliculas_bp.route("/peliculas/categoria", methods=["GET"])
 def buscar_por_genero():
     from app_peliculas import mysql
@@ -207,13 +208,12 @@ def crear_pelicula():
             jsonify({"error": "Error al registrar la película", "detalle": str(e)}),
             500,
         )
+# ---------------------------------------------------------------------------------------------------
+# -------------------AHORA LOS ENDPOINTS PARA FAVORITOS----------------------------------------------
+# ---------------------------------------------------------------------------------------------------
 
-    # ---------------------------------------------------------------------------------------------------
-    # -------------------AHORA LOS ENDPOINTS PARA FAVORITOS----------------------------------------------
-    # ---------------------------------------------------------------------------------------------------
 
-    # Agregar a favoritos
-
+# Agregar a favoritos
 
 @peliculas_bp.route("/favorito/add/<int:id_pelicula>", methods=["POST"])
 def agregar_favorito(id_pelicula):
@@ -314,3 +314,91 @@ def eliminar_favorito(id_pelicula):
         return jsonify({"mensaje": "Película eliminada de favoritos exitosamente"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# ==========================================
+# Ver que mas mira el usuario segun su favorito
+# ==========================================
+@peliculas_bp.route("/favoritos/analitica/<int:id_usuario>", methods=["GET"])
+def analitica_favoritos(id_usuario):
+    import requests
+    import pandas as pd
+    import matplotlib.pyplot as plt
+
+    try:
+
+        # Hacemos una petición GET a nuestro PROPIO endpoint de favoritos
+        url_api_favoritos = f"http://127.0.0.1:5000/favoritos/usuario/{id_usuario}"
+
+        print(f"Consultando intermediario: {url_api_favoritos}...")
+        respuesta = requests.get(url_api_favoritos)
+
+        # Validamos si la otra API respondió bien
+        if respuesta.status_code != 200:
+            return (
+                jsonify({"error": "No se pudo obtener la información del usuario"}),
+                respuesta.status_code,
+            )
+
+        # EL JSON (El intermediario)
+        datos_json = respuesta.json()
+        lista_favoritos = datos_json.get("favoritos", [])
+
+        if not lista_favoritos:
+            return (
+                jsonify(
+                    {
+                        "mensaje": "El usuario no tiene películas en favoritos para analizar"
+                    }
+                ),
+                404,
+            )
+
+        # ANALÍTICA CON PANDAS
+        df = pd.DataFrame(lista_favoritos)
+
+        #  la llave "genero", contamos por esa columna
+        conteo_generos = df["genero"].value_counts()
+
+        # GRAFICA CON MATPLOTLIB
+        plt.figure(figsize=(6, 6))
+        plt.pie(
+            conteo_generos,
+            labels=conteo_generos.index,
+            autopct="%1.1f%%",
+            startangle=90,
+            colors=plt.cm.Paired.colors,
+        )
+        plt.title(f"Tu Perfil de Cinéfilo (Usuario {id_usuario})")
+
+        # Mostramos la ventana emergente
+        print("Abriendo gráfica de Matplotlib...")
+        plt.show()
+
+        return (
+            jsonify(
+                {
+                    "id_usuario": id_usuario,
+                    "mensaje": "Análisis completado. Gráfica mostrada en el servidor.",
+                    "datos_utilizados": len(lista_favoritos),
+                }
+            ),
+            200,
+        )
+
+    except requests.exceptions.RequestException as e:
+        return (
+            jsonify(
+                {
+                    "error": "Fallo la comunicación con la API de favoritos",
+                    "detalle": str(e),
+                }
+            ),
+            500,
+        )
+    except Exception as e:
+        return (
+            jsonify(
+                {"error": "Error interno al generar la analítica", "detalle": str(e)}
+            ),
+            500,
+        )

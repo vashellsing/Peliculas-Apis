@@ -5,7 +5,7 @@ series_bp = Blueprint("series_bp", __name__)
 
 
 # ==========================================
-# ENDPOINT PARA TRAER TODO EL CATÁLOGO
+# Trae todas las series
 # ==========================================
 @series_bp.route("/series", methods=["GET"])
 def obtener_series():
@@ -96,7 +96,7 @@ def buscar_por_idioma():
                 }
             )
 
-        # Si el array está vacío, significa que no hay series en ese idioma
+        # Si el array esta vacio, significa que no hay series en ese idioma
         if not series:
             return (
                 jsonify({"mensaje": f"No se encontraron series en el idioma: {idioma_buscado}"}),

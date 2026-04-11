@@ -1,5 +1,6 @@
 class Config:
-    # Cambia la contraseña si tu MySQL (XAMPP, Workbench, etc.) tiene una.
+    # Conexion a la bd
+    
     MYSQL_HOST = 'localhost'
     MYSQL_USER = 'root'
     MYSQL_PASSWORD = '' 
