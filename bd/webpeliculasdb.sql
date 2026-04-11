@@ -42,7 +42,7 @@ CREATE TABLE Cines (
     ciudadCine VARCHAR(100)
 );
 
--- 5. TABLA COMENTARIOS 
+-- TABLA COMENTARIOS 
 CREATE TABLE Comentarios (
     id_comentario INT AUTO_INCREMENT PRIMARY KEY,
     id_peliculaComentario INT NOT NULL,
