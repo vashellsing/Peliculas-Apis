@@ -107,8 +107,15 @@ INSERT INTO Comentarios (id_peliculaComentario, id_usuarioComentario, calificaci
 
 -- Favoritos
 INSERT INTO Favoritos (id_usuarioFavorito, id_peliculaFavorito) VALUES 
+-- Todas las películas para el Usuario 1 (Carlos Perez)
 (1, 1), 
+(1, 2), 
 (1, 3), 
+(1, 4), 
+(1, 5),  
+(1, 7), 
+(1, 8), 
+(1, 9), 
 (2, 2);
 
 -- Cines 

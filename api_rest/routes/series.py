@@ -106,3 +106,131 @@ def buscar_por_idioma():
         return jsonify({"series": series}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# ENDPOINT PARA BUSCAR SERIES POR AÑO
+# ==========================================
+@series_bp.route("/series/anio", methods=["GET"])
+def buscar_por_anio():
+    from app_series import mysql
+
+    # Capturamos el año enviado en la URL, ej: /series/anio?q=2017
+    anio_buscado = request.args.get("q")
+
+    # Validamos que el usuario haya enviado el parámetro
+    if not anio_buscado:
+        return (
+            jsonify(
+                {
+                    "error": "Debes enviar un año válido. Ejemplo: /series/anio?q=2021"
+                }
+            ),
+            400,
+        )
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute(
+            """
+            SELECT id_serie, tituloSerie, titulo_originalSerie, sinopsisSerie, 
+                   anio_lanzamientoSerie, temporadasSerie, actoresSerie, generoSerie, idiomaSerie 
+            FROM Series 
+            WHERE anio_lanzamientoSerie = %s
+            """,
+            (anio_buscado,),
+        )
+
+        datos = cur.fetchall()
+        cur.close()
+
+        series = []
+        for fila in datos:
+            series.append(
+                {
+                    "id": fila[0],
+                    "titulo": fila[1],
+                    "titulo_original": fila[2],
+                    "sinopsis": fila[3],
+                    "anio": fila[4],
+                    "temporadas": fila[5],
+                    "actores": fila[6],
+                    "genero": fila[7],
+                    "idioma": fila[8],
+                }
+            )
+
+        # Si el array está vacío, significa que no hay series de ese año
+        if not series:
+            return (
+                jsonify({"mensaje": f"No se encontraron series lanzadas en el año: {anio_buscado}"}),
+                404,
+            )
+
+        return jsonify({"series": series}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# ENDPOINT PARA BUSCAR SERIES POR GÉNERO
+# ==========================================
+@series_bp.route("/series/genero", methods=["GET"])
+def buscar_por_genero():
+    from app_series import mysql
+
+    # Capturamos el género enviado en la URL, ej: /series/genero?q=Drama
+    genero_buscado = request.args.get("q")
+
+    # Validamos que el usuario haya enviado el parámetro
+    if not genero_buscado:
+        return (
+            jsonify(
+                {
+                    "error": "Debes enviar un género válido. Ejemplo: /series/genero?q=Ciencia Ficcion"
+                }
+            ),
+            400,
+        )
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute(
+            """
+            SELECT id_serie, tituloSerie, titulo_originalSerie, sinopsisSerie, 
+                   anio_lanzamientoSerie, temporadasSerie, actoresSerie, generoSerie, idiomaSerie 
+            FROM Series 
+            WHERE generoSerie = %s
+            """,
+            (genero_buscado,),
+        )
+
+        datos = cur.fetchall()
+        cur.close()
+
+        series = []
+        for fila in datos:
+            series.append(
+                {
+                    "id": fila[0],
+                    "titulo": fila[1],
+                    "titulo_original": fila[2],
+                    "sinopsis": fila[3],
+                    "anio": fila[4],
+                    "temporadas": fila[5],
+                    "actores": fila[6],
+                    "genero": fila[7],
+                    "idioma": fila[8],
+                }
+            )
+
+        # Si el array está vacío, significa que no hay series en ese género
+        if not series:
+            return (
+                jsonify({"mensaje": f"No se encontraron series en el género: {genero_buscado}"}),
+                404,
+            )
+
+        return jsonify({"series": series}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
