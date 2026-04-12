@@ -108,6 +108,7 @@ def buscar_por_titulo():
 
 # Buscar películas por CATEGORÍA
 
+
 @peliculas_bp.route("/peliculas/categoria", methods=["GET"])
 def buscar_por_genero():
     from app_peliculas import mysql
@@ -208,12 +209,15 @@ def crear_pelicula():
             jsonify({"error": "Error al registrar la película", "detalle": str(e)}),
             500,
         )
+
+
 # ---------------------------------------------------------------------------------------------------
 # -------------------AHORA LOS ENDPOINTS PARA FAVORITOS----------------------------------------------
 # ---------------------------------------------------------------------------------------------------
 
 
 # Agregar a favoritos
+
 
 @peliculas_bp.route("/favorito/add/<int:id_pelicula>", methods=["POST"])
 def agregar_favorito(id_pelicula):
@@ -314,6 +318,7 @@ def eliminar_favorito(id_pelicula):
         return jsonify({"mensaje": "Película eliminada de favoritos exitosamente"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # ==========================================
 # Ver que mas mira el usuario segun su favorito
