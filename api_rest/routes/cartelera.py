@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from utils.auth import require_api_key
 
 # Creamos el Blueprint para la cartelera
 cartelera_bp = Blueprint("cartelera_bp", __name__)
@@ -8,6 +9,7 @@ cartelera_bp = Blueprint("cartelera_bp", __name__)
 # TRAER TODA LA CARTELERA (GET)
 # ==========================================
 @cartelera_bp.route("/cartelera", methods=["GET"])
+@require_api_key
 def obtener_cartelera():
     from app_cartelera import mysql
 
