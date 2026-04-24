@@ -6,7 +6,8 @@ CREATE TABLE Usuarios (
     id_usuario INT AUTO_INCREMENT PRIMARY KEY,
     nombreUsuario VARCHAR(100) NOT NULL,
     correoUsuario VARCHAR(100) NOT NULL UNIQUE,
-    contrasenaUsuario VARCHAR(255) NOT NULL
+    contrasenaUsuario VARCHAR(255) NOT NULL,
+    rol ENUM('cliente', 'admin') DEFAULT 'cliente'
 );
 
 -- TABLA PELICULAS (Con cambios, para filtrar mejor luego)

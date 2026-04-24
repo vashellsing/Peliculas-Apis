@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from utils.auth import require_api_key, require_jwt, require_role
 
 # Creamos el Blueprint para las pelculas
 peliculas_bp = Blueprint("peliculas_bp", __name__)
@@ -6,6 +7,7 @@ peliculas_bp = Blueprint("peliculas_bp", __name__)
 
 # Traer TODAS las películas
 @peliculas_bp.route("/peliculas", methods=["GET"])
+@require_api_key
 def obtener_peliculas():
     from app_peliculas import mysql
 
@@ -49,6 +51,7 @@ def obtener_peliculas():
 
 # Buscar películas por TÍTULO
 @peliculas_bp.route("/peliculas/buscar", methods=["GET"])
+@require_api_key
 def buscar_por_titulo():
     from app_peliculas import mysql
 
@@ -170,18 +173,18 @@ def buscar_por_genero():
 
 
 @peliculas_bp.route("/peliculas/agregar", methods=["POST"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
 def crear_pelicula():
     from app_peliculas import mysql
 
     datos = request.json
-
-    # Validación básica: Al menos el título y el año son obligatorios
     if not datos or not datos.get("titulo") or not datos.get("anio"):
         return jsonify({"error": "El título y el año son obligatorios"}), 400
 
     try:
         cur = mysql.connection.cursor()
-        # Usamos .get() con valores por defecto por si el usuario no envía todos los datos
         cur.execute(
             """
             INSERT INTO Peliculas (titulo, titulo_originalPelicula, sinopsis, anio, 
@@ -198,11 +201,19 @@ def crear_pelicula():
                 datos.get("idioma", "Otro"),
             ),
         )
-
         mysql.connection.commit()
         cur.close()
-
-        return jsonify({"mensaje": "Película registrada exitosamente"}), 201
+        return (
+            jsonify(
+                {
+                    "mensaje": "Película registrada exitosamente",
+                    "por": request.current_user.get("nombre"),
+                }
+            ),
+            201,
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         return (
@@ -220,41 +231,42 @@ def crear_pelicula():
 
 
 @peliculas_bp.route("/favorito/add/<int:id_pelicula>", methods=["POST"])
+@require_api_key
+@require_jwt
 def agregar_favorito(id_pelicula):
     from app_peliculas import mysql
 
-    datos = request.json
-    id_usuario = datos.get("id_usuario")
-
-    if not id_usuario:
-        return jsonify({"error": "El id_usuario es obligatorio"}), 400
+    # SEGURIDAD: El ID viene del Token
+    id_usuario = request.current_user.get("id")
 
     try:
         cur = mysql.connection.cursor()
-        # Insertamos la relación entre el usuario (del JSON) y la película (de la URL)
         cur.execute(
             "INSERT INTO Favoritos (id_usuarioFavorito, id_peliculaFavorito) VALUES (%s, %s)",
             (id_usuario, id_pelicula),
         )
         mysql.connection.commit()
         cur.close()
-
-        return jsonify({"mensaje": "Película agregada a favoritos con éxito"}), 201
+        return jsonify({"mensaje": "Agregada a TUS favoritos"}), 201
     except Exception as e:
-        # Manejo de error por si ya existe el favorito (Duplicate entry)
         if "Duplicate entry" in str(e):
-            return jsonify({"error": "Esta película ya está en tus favoritos"}), 409
+            return jsonify({"error": "Ya está en tus favoritos"}), 409
         return jsonify({"error": str(e)}), 500
 
 
 # Mostrar favoritos de un usuario
-@peliculas_bp.route("/favoritos/usuario/<int:id_usuario>", methods=["GET"])
-def obtener_favoritos(id_usuario):
+@peliculas_bp.route(
+    "/favoritos/mio", methods=["GET"]
+)  # Cambiado de /usuario/<id> a /mio
+@require_api_key
+@require_jwt
+def obtener_favoritos():
     from app_peliculas import mysql
+
+    id_usuario = request.current_user.get("id")
 
     try:
         cur = mysql.connection.cursor()
-        # Hacemos un JOIN para mostrar información útil de la película
         cur.execute(
             """
             SELECT p.id_pelicula, p.titulo, p.generoPelicula, f.fecha_agregado 
@@ -264,21 +276,18 @@ def obtener_favoritos(id_usuario):
         """,
             (id_usuario,),
         )
-
         datos = cur.fetchall()
         cur.close()
 
-        favoritos = []
-        for fila in datos:
-            favoritos.append(
-                {
-                    "id_pelicula": fila[0],
-                    "titulo": fila[1],
-                    "genero": fila[2],
-                    "agregado_el": fila[3],
-                }
-            )
-
+        favoritos = [
+            {
+                "id_pelicula": f[0],
+                "titulo": f[1],
+                "genero": f[2],
+                "agregado_el": str(f[3]),
+            }
+            for f in datos
+        ]
         return jsonify({"favoritos": favoritos}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -286,19 +295,12 @@ def obtener_favoritos(id_usuario):
 
 # Eliminar de favoritos
 @peliculas_bp.route("/favorito/borrar/<int:id_pelicula>", methods=["DELETE"])
+@require_api_key
+@require_jwt
 def eliminar_favorito(id_pelicula):
     from app_peliculas import mysql
 
-    datos = request.json
-    id_usuario = datos.get("id_usuario")
-
-    if not id_usuario:
-        return (
-            jsonify(
-                {"error": "El id_usuario es obligatorio para eliminar el favorito"}
-            ),
-            400,
-        )
+    id_usuario = request.current_user.get("id")
 
     try:
         cur = mysql.connection.cursor()
@@ -307,15 +309,10 @@ def eliminar_favorito(id_pelicula):
             (id_usuario, id_pelicula),
         )
         mysql.connection.commit()
-
         if cur.rowcount == 0:
-            return (
-                jsonify({"error": "No tiene registrada la pelicula en favoritos"}),
-                404,
-            )
-
+            return jsonify({"error": "No estaba en favoritos"}), 404
         cur.close()
-        return jsonify({"mensaje": "Película eliminada de favoritos exitosamente"}), 200
+        return jsonify({"mensaje": "Eliminado de favoritos"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -323,45 +320,42 @@ def eliminar_favorito(id_pelicula):
 # ==========================================
 # Ver que mas mira el usuario segun su favorito
 # ==========================================
-@peliculas_bp.route("/favoritos/analitica/<int:id_usuario>", methods=["GET"])
-def analitica_favoritos(id_usuario):
-    import requests
+@peliculas_bp.route("/favoritos/analitica", methods=["GET"])
+@require_api_key
+@require_jwt
+def analitica_favoritos():
+    # Ya no necesitamos recibir id_usuario por la URL
     import pandas as pd
     import matplotlib.pyplot as plt
+    from app_peliculas import mysql
+
+    # Extraemos el ID del dueño del token
+    id_usuario = request.current_user.get("id")
+    nombre_usuario = request.current_user.get("nombre")
 
     try:
+        cur = mysql.connection.cursor()
 
-        # Hacemos una petición GET a nuestro PROPIO endpoint de favoritos
-        url_api_favoritos = f"http://127.0.0.1:5000/favoritos/usuario/{id_usuario}"
+        # Consultamos directamente los géneros de los favoritos del usuario
+        query = """
+            SELECT p.generoPelicula 
+            FROM Favoritos f
+            JOIN Peliculas p ON f.id_peliculaFavorito = p.id_pelicula
+            WHERE f.id_usuarioFavorito = %s
+        """
+        cur.execute(query, (id_usuario,))
+        datos = cur.fetchall()
+        cur.close()
 
-        print(f"Consultando intermediario: {url_api_favoritos}...")
-        respuesta = requests.get(url_api_favoritos)
-
-        # Validamos si la otra API respondió bien
-        if respuesta.status_code != 200:
+        if not datos:
             return (
-                jsonify({"error": "No se pudo obtener la información del usuario"}),
-                respuesta.status_code,
-            )
-
-        # EL JSON (El intermediario)
-        datos_json = respuesta.json()
-        lista_favoritos = datos_json.get("favoritos", [])
-
-        if not lista_favoritos:
-            return (
-                jsonify(
-                    {
-                        "mensaje": "El usuario no tiene películas en favoritos para analizar"
-                    }
-                ),
+                jsonify({"mensaje": "No tienes películas en favoritos para analizar"}),
                 404,
             )
 
         # ANALÍTICA CON PANDAS
-        df = pd.DataFrame(lista_favoritos)
-
-        #  la llave "genero", contamos por esa columna
+        # Convertimos la lista de tuplas en un DataFrame
+        df = pd.DataFrame(datos, columns=["genero"])
         conteo_generos = df["genero"].value_counts()
 
         # GRAFICA CON MATPLOTLIB
@@ -373,33 +367,24 @@ def analitica_favoritos(id_usuario):
             startangle=90,
             colors=plt.cm.Paired.colors,
         )
-        plt.title(f"Tu Perfil de Cinéfilo (Usuario {id_usuario})")
+        plt.title(f"Perfil de Cinéfilo: {nombre_usuario}")
 
-        # Mostramos la ventana emergente
-        print("Abriendo gráfica de Matplotlib...")
+        # Guardamos o mostramos (plt.show() abre ventana en el servidor)
+        print(f"Generando gráfica para {nombre_usuario}...")
         plt.show()
 
         return (
             jsonify(
                 {
                     "id_usuario": id_usuario,
-                    "mensaje": "Análisis completado. Gráfica mostrada en el servidor.",
-                    "datos_utilizados": len(lista_favoritos),
+                    "nombre": nombre_usuario,
+                    "mensaje": "Análisis completado exitosamente.",
+                    "total_favoritos": len(df),
                 }
             ),
             200,
         )
 
-    except requests.exceptions.RequestException as e:
-        return (
-            jsonify(
-                {
-                    "error": "Fallo la comunicación con la API de favoritos",
-                    "detalle": str(e),
-                }
-            ),
-            500,
-        )
     except Exception as e:
         return (
             jsonify(
