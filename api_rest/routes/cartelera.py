@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from utils.auth import require_api_key, require_jwt, require_role
 
 # Creamos el Blueprint para la cartelera
 cartelera_bp = Blueprint("cartelera_bp", __name__)
@@ -8,6 +9,7 @@ cartelera_bp = Blueprint("cartelera_bp", __name__)
 # TRAER TODA LA CARTELERA (GET)
 # ==========================================
 @cartelera_bp.route("/cartelera", methods=["GET"])
+@require_api_key
 def obtener_cartelera():
     from app_cartelera import mysql
 
@@ -50,7 +52,22 @@ def obtener_cartelera():
 # AGREGAR NUEVA FUNCIÓN (POST)
 # ==========================================
 @cartelera_bp.route("/cartelera", methods=["POST"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
 def crear_funcion():
+    # Segundo: ¿Es administrador?
+    usuario = request.current_user
+
+    if usuario.get("rol") != "admin":
+        return (
+            jsonify(
+                {
+                    "error": "No tienes permisos de administrador para programar funciones"
+                }
+            ),
+            403,
+        )
     from app_cartelera import mysql
 
     datos = request.json
@@ -98,6 +115,9 @@ def crear_funcion():
 # UPDATE: ACTUALIZAR FUNCIÓN (PUT)
 # ==========================================
 @cartelera_bp.route("/cartelera/<int:id_cartelera>", methods=["PUT"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
 def actualizar_funcion(id_cartelera):
     from app_cartelera import mysql
 
@@ -145,7 +165,11 @@ def actualizar_funcion(id_cartelera):
 # ELIMINAR FUNCIÓN (DELETE)
 # ==========================================
 @cartelera_bp.route("/cartelera/<int:id_cartelera>", methods=["DELETE"])
+@require_api_key  #  ¿Viene de una App autorizada?
+@require_jwt  #  ¿El usuario está logueado?
+@require_role(["admin"])  #  ¿Es administrador?
 def eliminar_funcion(id_cartelera):
+
     from app_cartelera import mysql
 
     try:
