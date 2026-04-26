@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from utils.auth import require_api_key
 
 # Creamos el Blueprint para las series
 series_bp = Blueprint("series_bp", __name__)
@@ -8,6 +9,7 @@ series_bp = Blueprint("series_bp", __name__)
 # Trae todas las series
 # ==========================================
 @series_bp.route("/series", methods=["GET"])
+@require_api_key
 def obtener_series():
     from app_series import mysql
 
@@ -48,6 +50,7 @@ def obtener_series():
 # ENDPOINT PARA BUSCAR SERIES POR IDIOMA
 # ==========================================
 @series_bp.route("/series/idioma", methods=["GET"])
+@require_api_key
 def buscar_por_idioma():
     from app_series import mysql
 
@@ -112,6 +115,7 @@ def buscar_por_idioma():
 # ENDPOINT PARA BUSCAR SERIES POR AÑO
 # ==========================================
 @series_bp.route("/series/anio", methods=["GET"])
+@require_api_key
 def buscar_por_anio():
     from app_series import mysql
 
@@ -176,6 +180,7 @@ def buscar_por_anio():
 # ENDPOINT PARA BUSCAR SERIES POR GÉNERO
 # ==========================================
 @series_bp.route("/series/genero", methods=["GET"])
+@require_api_key
 def buscar_por_genero():
     from app_series import mysql
 

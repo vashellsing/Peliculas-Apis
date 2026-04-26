@@ -150,7 +150,7 @@ def actualizar_funcion(id_cartelera):
 
         # Validamos si realmente se actualizó algo
         if cur.rowcount == 0:
-            return jsonify({"error": "La función en cartelera no existe"}), 404
+            return jsonify({"error": "No se realizo ningún cambio para actualizarla "}), 404
 
         cur.close()
         return (
@@ -194,6 +194,7 @@ def eliminar_funcion(id_cartelera):
 # BUSCAR FUNCIONES POR FECHA (GET)
 # ==========================================
 @cartelera_bp.route("/cartelera/fecha", methods=["GET"])
+@require_api_key
 def buscar_por_fecha():
     from app_cartelera import mysql
 
@@ -261,6 +262,7 @@ def buscar_por_fecha():
 # BUSCAR FUNCIONES POR CINE (GET)
 # ==========================================
 @cartelera_bp.route("/cartelera/cine", methods=["GET"])
+@require_api_key
 def buscar_por_cine():
     from app_cartelera import mysql
 

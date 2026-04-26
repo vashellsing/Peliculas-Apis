@@ -1,67 +1,68 @@
 from flask import Blueprint, request, jsonify
 from utils.auth import require_api_key, require_jwt, require_role
 
+# Mantenemos el nombre del blueprint pero apuntamos a la tabla 'Comentarios'
 resenas_bp = Blueprint("resenas_bp", __name__)
 
 
+# ==========================================
+# POST: DEJAR UN COMENTARIO / RESEÑA
+# ==========================================
 @resenas_bp.route("/resenas", methods=["POST"])
 @require_api_key
 @require_jwt
-@require_role(["cliente", "admin"])  # Ambos pueden comentar
+@require_role(["usuario", "admin"])  
 def dejar_resena():
-    from app_peliculas import (
-        mysql,
-    )  # Asegúrate de apuntar a la app que tiene la conexión
+    from app_peliculas import mysql
 
     datos = request.json
     usuario_id = request.current_user.get("id")
+    usuario_rol = request.current_user.get("rol") 
 
-    if not datos or not all(
-        k in datos for k in ("id_pelicula", "comentario", "calificacion")
-    ):
-        return jsonify({"error": "Datos incompletos"}), 400
+    if not datos or not all(k in datos for k in ("id_pelicula", "comentario", "calificacion")):
+        return jsonify({"error": "Faltan datos obligatorios"}), 400
+
+    id_pelicula = datos["id_pelicula"]
 
     try:
         cur = mysql.connection.cursor()
-        cur.execute(
+
+        # Solo aplicamos la restricción si el rol es 'usuario'
+        # Los 'admin' se saltan esta validación automáticamente
+        if usuario_rol == "usuario":
+            query_check = """
+                SELECT id_peliculaComentario 
+                FROM Comentarios 
+                WHERE id_usuarioComentario = %s AND id_peliculaComentario = %s
             """
-            INSERT INTO Resenas (id_usuarioResena, id_peliculaResena, comentarioResena, calificacionResena)
+            cur.execute(query_check, (usuario_id, id_pelicula))
+            existe = cur.fetchone()
+
+            if existe:
+                cur.close()
+                return jsonify({"error": "Solo puedes dejar una reseña por película"}), 403
+
+        # Inserción de la reseña
+        sql = """
+            INSERT INTO Comentarios 
+            (id_peliculaComentario, id_usuarioComentario, calificacionComentario, textoComentario)
             VALUES (%s, %s, %s, %s)
-        """,
+        """
+        cur.execute(
+            sql,
             (
+                id_pelicula,
                 usuario_id,
-                datos["id_pelicula"],
-                datos["comentario"],
                 datos["calificacion"],
+                datos["comentario"],
             ),
         )
 
         mysql.connection.commit()
         cur.close()
-        return jsonify({"mensaje": "Reseña publicada con éxito"}), 201
+        return jsonify({"mensaje": "Comentario publicado con éxito"}), 201
+
     except Exception as e:
+        if "foreign key constraint fails" in str(e).lower():
+            return jsonify({"error": "La película no existe"}), 400
         return jsonify({"error": str(e)}), 500
-
-
-@resenas_bp.route("/resenas/<int:id_pelicula>", methods=["GET"])
-@require_api_key
-def ver_resenas(id_pelicula):
-    from app_peliculas import mysql
-
-    # Esta es pública, cualquiera con API Key la ve
-    cur = mysql.connection.cursor()
-    cur.execute(
-        """
-        SELECT u.nombreUsuario, r.comentarioResena, r.calificacionResena 
-        FROM Resenas r
-        JOIN Usuarios u ON r.id_usuarioResena = u.id_usuario
-        WHERE r.id_peliculaResena = %s
-    """,
-        (id_pelicula,),
-    )
-
-    resultados = cur.fetchall()
-    cur.close()
-
-    resenas = [{"usuario": r[0], "comentario": r[1], "nota": r[2]} for r in resultados]
-    return jsonify({"peliculas_id": id_pelicula, "resenas": resenas}), 200
