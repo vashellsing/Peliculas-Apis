@@ -7,7 +7,7 @@ CREATE TABLE Usuarios (
     nombreUsuario VARCHAR(100) NOT NULL,
     correoUsuario VARCHAR(100) NOT NULL UNIQUE,
     contrasenaUsuario VARCHAR(255) NOT NULL,
-    rol ENUM('cliente', 'admin') DEFAULT 'cliente'
+    rol ENUM('usuario', 'admin') DEFAULT 'usuario'
 );
 
 -- TABLA PELICULAS (Con cambios, para filtrar mejor luego)

@@ -44,7 +44,7 @@ class ServicioAutenticacion(ServiceBase):
                     return "Error: Ese correo ya existe."
 
                 # Por defecto registramos como 'cliente'
-                sql_insertar = "INSERT INTO Usuarios (nombreUsuario, correoUsuario, contrasenaUsuario, rol) VALUES (%s, %s, %s, 'cliente')"
+                sql_insertar = "INSERT INTO Usuarios (nombreUsuario, correoUsuario, contrasenaUsuario, rol) VALUES (%s, %s, %s, 'usuario')"
                 ejecutarConsulta.execute(
                     sql_insertar, (nombreUsuario, correoUsuario, contrasenaUsuario)
                 )

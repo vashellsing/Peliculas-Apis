@@ -113,6 +113,7 @@ def buscar_por_titulo():
 
 
 @peliculas_bp.route("/peliculas/categoria", methods=["GET"])
+@require_api_key
 def buscar_por_genero():
     from app_peliculas import mysql
 
