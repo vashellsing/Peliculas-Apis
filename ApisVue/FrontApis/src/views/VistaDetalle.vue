@@ -112,7 +112,8 @@ onMounted(() => {
             <div class="acciones-calificacion">
               <!-- El botón ahora llama a la función que abre el Modal -->
               <button @click="abrirTrailer" class="btn-primario"><span>▶</span> Ver Tráiler</button>
-              <button class="btn-secundario"><span>❤️</span> Añadir a Favoritos</button>
+              <RouterLink to="/favoritos" class="btn-secundario"><span>❤️</span>Añadir a Favoritos</RouterLink>
+            
 
               <div class="calificacion"><span class="estrella">★</span> 4.5 / 5.0</div>
             </div>
@@ -292,6 +293,7 @@ button:hover {
   border: 1px solid #ccc;
   border-radius: 6px;
   cursor: pointer;
+  text-decoration: none;
 }
 .btn-secundario:hover {
   background-color: #f5f5f5;

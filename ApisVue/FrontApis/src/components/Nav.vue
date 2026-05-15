@@ -14,6 +14,7 @@
       <ul class="enlaces">
         <li><RouterLink to="/">Peliculas</RouterLink></li>
         <li><RouterLink to="/series">Series</RouterLink></li>
+        <li><RouterLink to="/favoritos">Favoritos</RouterLink></li>
 
         <li>
           <RouterLink to="/admin" style="text-decoration: none; color: #e50914; font-weight: bold"
