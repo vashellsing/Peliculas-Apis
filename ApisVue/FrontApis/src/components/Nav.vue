@@ -17,7 +17,9 @@
         <li><RouterLink to="/favoritos">Favoritos</RouterLink></li>
 
         <li>
-          <RouterLink to="/admin" style="text-decoration: none; color: #e50914; font-weight: bold"
+          <RouterLink
+            to="/admin"
+            style="text-decoration: none; color: #e50914; font-weight: bold"
             >Admin</RouterLink
           >
         </li>
@@ -25,7 +27,16 @@
     </div>
 
     <div class="seccion-derecha">
-      <RouterLink to="/acceso" class="btn-secundario" style="text-decoration: none"
+      <RouterLink
+        to="/perfil"
+        class="btn-secundario"
+        style="border-color: #e50914; color: #e50914"
+        >Mi Perfil</RouterLink
+      >
+      <RouterLink
+        to="/acceso"
+        class="btn-secundario"
+        style="text-decoration: none"
         >Iniciar sesion</RouterLink
       >
       <!-- <RouterLink to="/acceso" class="btn-primario" style="text-decoration: none;">Registrarse</RouterLink> -->
