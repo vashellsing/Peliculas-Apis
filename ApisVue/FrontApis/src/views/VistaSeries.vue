@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import BarraBusqueda from "@/components/BarraBusqueda.vue";
 import TarjetaPelicula from "@/components/TarjetaPelicula.vue";
 
@@ -40,6 +40,32 @@ const seriesMock = ref([
       "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Pulp+Fiction",
   },
 ]);
+
+// ==========================================
+// LÓGICA DE PAGINACIÓN (NUEVO)
+// ==========================================
+const paginaActual = ref(1);
+const elementosPorPagina = 4; // Cambia este número para mostrar más o menos tarjetas por página
+
+// Calculamos cuántas páginas habrá en total
+const totalPaginas = computed(() => {
+  return Math.ceil(seriesMock.value.length / elementosPorPagina);
+});
+
+// Segmentamos el arreglo original para extraer solo las series de la página activa
+const seriesPaginadas = computed(() => {
+  const inicio = (paginaActual.value - 1) * elementosPorPagina;
+  const fin = inicio + elementosPorPagina;
+  return seriesMock.value.slice(inicio, fin);
+});
+
+// Función para navegar entre páginas
+const cambiarPagina = (nuevaPagina) => {
+  if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas.value) {
+    paginaActual.value = nuevaPagina;
+    window.scrollTo({ top: 0, behavior: "smooth" }); // Sube la pantalla suavemente
+  }
+};
 </script>
 
 <template>
@@ -49,12 +75,42 @@ const seriesMock = ref([
 
       <div class="cuadricula-peliculas">
         <TarjetaPelicula
-          v-for="serie in seriesMock"
+          v-for="serie in seriesPaginadas"
           :key="serie.id"
           :titulo="serie.titulo"
           :calificacion="serie.calificacion"
           :imagenUrl="serie.imagenUrl"
         />
+      </div>
+
+      <div class="paginacion" v-if="totalPaginas > 1">
+        <button
+          class="btn-paginacion"
+          :disabled="paginaActual === 1"
+          @click="cambiarPagina(paginaActual - 1)"
+        >
+          &laquo; Anterior
+        </button>
+
+        <div class="numeros-pagina">
+          <button
+            v-for="numero in totalPaginas"
+            :key="numero"
+            class="btn-numero"
+            :class="{ activo: paginaActual === numero }"
+            @click="cambiarPagina(numero)"
+          >
+            {{ numero }}
+          </button>
+        </div>
+
+        <button
+          class="btn-paginacion"
+          :disabled="paginaActual === totalPaginas"
+          @click="cambiarPagina(paginaActual + 1)"
+        >
+          Siguiente &raquo;
+        </button>
       </div>
     </section>
   </div>
@@ -64,7 +120,7 @@ const seriesMock = ref([
 .seccion-cartelera {
   padding: 3rem 2rem;
   max-width: 1200px;
-  margin: 0 auto; /* Centra la sección en pantallas grandes */
+  margin: 0 auto;
 }
 
 .titulo-seccion {
@@ -73,11 +129,64 @@ const seriesMock = ref([
   margin-bottom: 2rem;
 }
 
-/* ----------------Aui esta la cuadricula de las peliculas */
 .cuadricula-peliculas {
   display: grid;
-
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 2rem;
+  margin-bottom: 3rem;
+}
+
+/* ========================================== */
+/* ESTILOS DE LA PAGINACIÓN (NUEVO)           */
+/* ========================================== */
+.paginacion {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 2rem;
+  padding-top: 2rem;
+  border-top: 1px solid #eaeaea;
+}
+
+.numeros-pagina {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-paginacion,
+.btn-numero {
+  background-color: white;
+  border: 1px solid #ccc;
+  color: #333;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: sans-serif;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.btn-numero {
+  padding: 0.5rem 0.8rem;
+}
+
+.btn-paginacion:hover:not(:disabled),
+.btn-numero:hover:not(.activo) {
+  background-color: #f5f5f5;
+  border-color: #999;
+}
+
+.btn-numero.activo {
+  background-color: #e50914;
+  color: white;
+  border-color: #e50914;
+}
+
+.btn-paginacion:disabled {
+  background-color: #f9f9f9;
+  color: #aaa;
+  border-color: #eee;
+  cursor: not-allowed;
 }
 </style>
