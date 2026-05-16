@@ -68,3 +68,4 @@ ApisVue/BackendApis/api_rest/iniciartodo.bat
 
 *.pyc
 *.pyc
+ApisVue/BackendApis/api_rest/__pycache__/app_cartelera.cpython-310.pyc
