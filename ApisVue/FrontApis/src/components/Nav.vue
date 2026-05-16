@@ -15,6 +15,7 @@
         <li><RouterLink to="/">Peliculas</RouterLink></li>
         <li><RouterLink to="/series">Series</RouterLink></li>
         <li><RouterLink to="/favoritos">Favoritos</RouterLink></li>
+        <li><RouterLink to="/generos">Generos</RouterLink></li>
 
         <li>
           <RouterLink
