@@ -66,6 +66,5 @@ ApisVue/BackendApis/api_rest/routes/__pycache__/series.cpython-310.pyc
 ApisVue/BackendApis/api_rest/utils/__pycache__/auth.cpython-310.pyc
 *.pyc
 ApisVue/BackendApis/api_rest/iniciartodo.bat
-/ApisVue
-/ApisVue
+
 *.pyc
