@@ -5,6 +5,7 @@ import VistaAutenticacion from '../views/VistaAutenticacion.vue'
 import VistaSeries from '@/views/VistaSeries.vue'
 import VistaAdmin from '@/views/VistaAdmin.vue'
 import vistaFavoritos from '@/views/VistaFavoritos.vue'
+import VistaPerfil from '@/views/VistaPerfil.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -42,6 +43,12 @@ const router = createRouter({
       name: 'favoritos',
       component: vistaFavoritos,
     },
+    {
+      path:'/perfil',
+      name:'perfil',
+      component: VistaPerfil
+    }
+  
   ],
 })
 
