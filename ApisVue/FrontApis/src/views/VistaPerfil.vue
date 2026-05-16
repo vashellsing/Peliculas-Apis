@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from "vue";
-import TarjetaPelicula from "../components/TarjetaPelicula.vue";
 
 const usuario = ref({
   nombre: "Cinéfilo Experto",
@@ -9,30 +8,7 @@ const usuario = ref({
   avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
 });
 
-// Simulamos las películas favoritas
-const peliculasFavoritas = ref([
-  {
-    id: 1,
-    titulo: "Interestelar",
-    calificacion: 8.6,
-    imagenUrl:
-      "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Interestelar",
-  },
-  {
-    id: 3,
-    titulo: "Matrix",
-    calificacion: 8.7,
-    imagenUrl: "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Matrix",
-  },
-  {
-    id: 10,
-    titulo: "Dune",
-    calificacion: 8.0,
-    imagenUrl: "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Dune",
-  },
-]);
-
-// --- LÓGICA DE ANALÍTICA ---
+// Estados para la carga de analítica
 const cargandoAnalitica = ref(false);
 const mostrarGrafica = ref(false);
 
@@ -40,7 +16,6 @@ const solicitarAnalitica = () => {
   cargandoAnalitica.value = true;
   mostrarGrafica.value = false;
 
-  // Simulamos el tiempo que tarda tu backend de Python en crear el gráfico con Pandas/Matplotlib
   setTimeout(() => {
     cargandoAnalitica.value = false;
     mostrarGrafica.value = true;
@@ -88,26 +63,11 @@ const solicitarAnalitica = () => {
           ¡Definitivamente eres un amante de la
           <strong>Ciencia Ficción</strong>!
         </p>
+
+        <RouterLink to="/favoritos" class="btn-ir-favoritos"
+          >Ver mis películas favoritas ➡</RouterLink
+        >
       </div>
-
-      <section class="seccion-favoritos">
-        <div class="cabecera-favoritos">
-          <h2>Tus Películas Guardadas</h2>
-          <span class="contador"
-            >{{ peliculasFavoritas.length }} películas</span
-          >
-        </div>
-
-        <div class="cuadricula-peliculas" v-if="peliculasFavoritas.length > 0">
-          <TarjetaPelicula
-            v-for="pelicula in peliculasFavoritas"
-            :key="pelicula.id"
-            :titulo="pelicula.titulo"
-            :calificacion="pelicula.calificacion"
-            :imagenUrl="pelicula.imagenUrl"
-          />
-        </div>
-      </section>
     </div>
   </div>
 </template>
@@ -162,7 +122,6 @@ const solicitarAnalitica = () => {
   color: #999;
 }
 
-/* ESTILOS DE ANALÍTICA */
 .caja-analitica {
   background-color: #1a1a1a;
   color: white;
@@ -228,9 +187,25 @@ const solicitarAnalitica = () => {
 .resumen-analitica {
   font-size: 1.2rem;
   color: #555;
+  margin-bottom: 1.5rem;
 }
 .resumen-analitica strong {
   color: #e50914;
+}
+
+.btn-ir-favoritos {
+  display: inline-block;
+  padding: 0.6rem 1.2rem;
+  background-color: #4a4a4a;
+  color: white;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 0.9rem;
+  transition: background-color 0.2s;
+}
+.btn-ir-favoritos:hover {
+  background-color: #333;
 }
 
 @keyframes aparecer {
@@ -242,31 +217,5 @@ const solicitarAnalitica = () => {
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-.cabecera-favoritos {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  border-bottom: 2px solid #eaeaea;
-  padding-bottom: 1rem;
-}
-.cabecera-favoritos h2 {
-  margin: 0;
-  color: #333;
-}
-.contador {
-  background-color: #e2e8f0;
-  color: #475569;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  font-weight: bold;
-}
-.cuadricula-peliculas {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 2rem;
 }
 </style>
