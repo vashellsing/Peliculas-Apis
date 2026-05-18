@@ -450,3 +450,33 @@ def analitica_favoritos():
             ),
             500,
         )
+
+
+# Endpoint para mostrar el póster de una película aleatoriamente filtrando los nulls
+# En routes/peliculas.py — agrega esta ruta
+
+@peliculas_bp.route("/peliculas/poster-aleatorio", methods=["GET"])
+@require_api_key
+def obtener_poster_aleatorio():
+    from app_peliculas import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("""
+            SELECT poster 
+            FROM Peliculas
+            WHERE poster IS NOT NULL 
+              AND poster != ''
+            ORDER BY RAND()
+            LIMIT 1
+        """)
+        dato = cur.fetchone()
+        cur.close()
+
+        if dato is None:
+            return jsonify({"poster": None}), 200
+
+        return jsonify({"poster": dato[0]}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
