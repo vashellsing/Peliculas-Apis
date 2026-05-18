@@ -1,14 +1,42 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router' // <-- Importamos el Router
+import { ref, onMounted } from 'vue' // <-- Añadimos onMounted
+import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 const textoBusqueda = ref('')
 const generoSeleccionado = ref('')
 
+// ── Nuevo: estado para el poster de fondo ──────────────────────────────────
+const urlPoster = ref(null)
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+
+const cargarPosterAleatorio = async () => {
+  try {
+    const respuesta = await fetch(`${API_BASE}/peliculas/poster-aleatorio`, {
+      headers: { "x-api-key": "mi_super_api_key_fija_123" }  // misma key
+    })
+    if (!respuesta.ok) return
+
+    const datos = await respuesta.json()
+    if (!datos.poster) return
+
+    const img = new Image()
+    img.onload = () => { urlPoster.value = datos.poster }
+    img.onerror = () => { }
+    img.src = datos.poster
+
+  } catch (error) {
+    console.error('Poster aleatorio no disponible:', error)
+  }
+}
+
+onMounted(() => {
+  cargarPosterAleatorio()
+})
+// ──────────────────────────────────────────────────────────────────────────
+
 const realizarBusqueda = () => {
-  // 1. Preparamos un objeto con lo que vamos a poner en la URL
   const queryParams = {}
 
   if (textoBusqueda.value.trim() !== '') {
@@ -19,17 +47,25 @@ const realizarBusqueda = () => {
     queryParams.categoria = generoSeleccionado.value
   }
 
-  // 2. Le decimos al Router que vaya a la página de inicio (/)
-  // y le pegue los parámetros en la URL (ej: /?titulo=Shrek&categoria=Comedia)
   router.push({ path: '/', query: queryParams })
-
-  // Opcional: Limpiar el campo de texto después de buscar
   textoBusqueda.value = ''
 }
 </script>
 
 <template>
-  <section class="seccion-busqueda">
+  <!-- :style aplica la imagen si existe, si no queda el background-color del CSS -->
+  <section
+    class="seccion-busqueda"
+    :style="urlPoster ? {
+      backgroundImage: `url(${urlPoster})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    } : {}"
+  >
+    <!-- Overlay: solo aparece cuando hay imagen, para mantener el texto legible -->
+    <div v-if="urlPoster" class="overlay"></div>
+
     <div class="contenedor-buscador">
       <h2>Encuentra tu próxima película favorita</h2>
 
@@ -41,7 +77,6 @@ const realizarBusqueda = () => {
           class="input-busqueda"
         />
 
-        <!-- LOS VALUES AHORA COINCIDEN EXACTAMENTE CON TU BD -->
         <select v-model="generoSeleccionado" class="select-genero">
           <option value="">Todos los géneros</option>
           <option value="Accion">Acción</option>
@@ -62,24 +97,39 @@ const realizarBusqueda = () => {
 </template>
 
 <style scoped>
-/* Tu CSS original se mantiene igual, no lo toqué porque está perfecto */
 .seccion-busqueda {
   padding: 3rem 2rem;
-  background-color: #f5f5f5;
+  background-color: #f5f5f5; /* Fallback si no hay poster */
   display: flex;
   justify-content: center;
   font-family: sans-serif;
+  position: relative; /* Necesario para que el overlay se posicione dentro */
 }
+
+/* Overlay oscuro solo cuando hay imagen de fondo */
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
 .contenedor-buscador {
   width: 100%;
   max-width: 800px;
   text-align: center;
+  position: relative; /* Se mantiene encima del overlay */
+  z-index: 1;
 }
+
 .contenedor-buscador h2 {
   margin-bottom: 1.5rem;
-  color: #333;
   font-size: 1.8rem;
+  /* El color cambia según haya imagen o no */
+  color: v-bind("urlPoster ? '#ffffff' : '#333'");
+  text-shadow: v-bind("urlPoster ? '0 2px 8px rgba(0,0,0,0.7)' : 'none'");
 }
+
+/* Todo lo demás sin cambios */
 .formulario-busqueda {
   display: flex;
   gap: 0.5rem;
