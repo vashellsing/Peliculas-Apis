@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from "vue";
 
+// --- DATOS DEL USUARIO ---
 const usuario = ref({
   nombre: "Cinéfilo Experto",
   correo: "usuario@correo.com",
@@ -8,7 +9,28 @@ const usuario = ref({
   avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
 });
 
-// Estados para la carga de analítica
+// --- LÓGICA DE EDICIÓN DE PERFIL ---
+const editando = ref(false);
+const formulario = ref({});
+
+const activarEdicion = () => {
+  // Clonamos los datos actuales al formulario para no afectar la vista antes de guardar
+  formulario.value = { ...usuario.value };
+  editando.value = true;
+};
+
+const cancelarEdicion = () => {
+  editando.value = false;
+};
+
+const guardarCambios = () => {
+  // Pasamos los datos del formulario de vuelta al usuario y cerramos el modo edición
+  usuario.value = { ...formulario.value };
+  editando.value = false;
+  console.log("Datos actualizados (Simulación):", usuario.value);
+};
+
+// --- LÓGICA DE ANALÍTICA ---
 const cargandoAnalitica = ref(false);
 const mostrarGrafica = ref(false);
 
@@ -26,14 +48,57 @@ const solicitarAnalitica = () => {
 <template>
   <div class="vista-perfil">
     <div class="contenedor-perfil">
+      <!-- CABECERA DE USUARIO -->
       <header class="cabecera-usuario">
         <img :src="usuario.avatarUrl" alt="Avatar" class="avatar" />
+
         <div class="info-usuario">
-          <h1 class="nombre-usuario">{{ usuario.nombre }}</h1>
-          <p class="correo">{{ usuario.correo }}</p>
-          <p class="fecha-miembro">Miembro desde {{ usuario.miembroDesde }}</p>
+          <!-- VISTA DE LECTURA -->
+          <template v-if="!editando">
+            <h1 class="nombre-usuario">{{ usuario.nombre }}</h1>
+            <p class="correo">{{ usuario.correo }}</p>
+            <p class="fecha-miembro">
+              Miembro desde {{ usuario.miembroDesde }}
+            </p>
+
+            <button @click="activarEdicion" class="btn-editar-perfil">
+              ✏️ Editar Perfil
+            </button>
+          </template>
+
+          <!-- VISTA DE EDICIÓN -->
+          <form
+            v-else
+            @submit.prevent="guardarCambios"
+            class="formulario-edicion"
+          >
+            <div class="grupo-input">
+              <label>Nombre</label>
+              <input type="text" v-model="formulario.nombre" required />
+            </div>
+            <div class="grupo-input">
+              <label>Correo</label>
+              <input type="email" v-model="formulario.correo" required />
+            </div>
+            <div class="grupo-input">
+              <label>URL del Avatar (Opcional)</label>
+              <input type="text" v-model="formulario.avatarUrl" />
+            </div>
+
+            <div class="acciones-edicion">
+              <button
+                type="button"
+                @click="cancelarEdicion"
+                class="btn-cancelar"
+              >
+                Cancelar
+              </button>
+              <button type="submit" class="btn-guardar">Guardar Cambios</button>
+            </div>
+          </form>
         </div>
 
+        <!-- CAJA DE ANALÍTICA (Se mantiene igual) -->
         <div class="caja-analitica">
           <h3>ADN Cinéfilo</h3>
           <p>Descubre qué géneros dominan tus favoritos.</p>
@@ -52,6 +117,7 @@ const solicitarAnalitica = () => {
         </div>
       </header>
 
+      <!-- RESULTADO GRÁFICA -->
       <div v-if="mostrarGrafica" class="resultado-grafica">
         <h2>Tu Perfil de Espectador</h2>
         <img
@@ -64,15 +130,16 @@ const solicitarAnalitica = () => {
           <strong>Ciencia Ficción</strong>!
         </p>
 
-        <RouterLink to="/favoritos" class="btn-ir-favoritos"
-          >Ver mis películas favoritas ➡</RouterLink
-        >
+        <RouterLink to="/favoritos" class="btn-ir-favoritos">
+          Ver mis películas favoritas ➡
+        </RouterLink>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* ESTILOS ORIGINALES */
 .vista-perfil {
   padding: 3rem 2rem;
   font-family: sans-serif;
@@ -83,10 +150,9 @@ const solicitarAnalitica = () => {
   max-width: 1000px;
   margin: 0 auto;
 }
-
 .cabecera-usuario {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   background-color: white;
   padding: 2.5rem;
   border-radius: 12px;
@@ -102,9 +168,11 @@ const solicitarAnalitica = () => {
   border-radius: 50%;
   border: 4px solid #fff;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  object-fit: cover;
 }
 .info-usuario {
   flex: 1;
+  min-width: 250px;
 }
 .nombre-usuario {
   margin: 0 0 0.3rem 0;
@@ -122,6 +190,78 @@ const solicitarAnalitica = () => {
   color: #999;
 }
 
+/* NUEVOS ESTILOS PARA EDICIÓN */
+.btn-editar-perfil {
+  margin-top: 1rem;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #333;
+  transition: all 0.2s;
+}
+.btn-editar-perfil:hover {
+  background-color: #e2e2e2;
+}
+
+.formulario-edicion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  background: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #eaeaea;
+}
+.grupo-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.grupo-input label {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #555;
+}
+.grupo-input input {
+  padding: 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+.acciones-edicion {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 0.5rem;
+}
+.btn-cancelar {
+  background: none;
+  border: 1px solid #ccc;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  color: #555;
+}
+.btn-cancelar:hover {
+  background: #eee;
+}
+.btn-guardar {
+  background: #4a4a4a;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+}
+.btn-guardar:hover {
+  background: #333;
+}
+
+/* RESTO DE ESTILOS ORIGINALES */
 .caja-analitica {
   background-color: #1a1a1a;
   color: white;
@@ -162,7 +302,6 @@ const solicitarAnalitica = () => {
   color: #aaa;
   font-size: 0.9rem;
 }
-
 .resultado-grafica {
   background-color: white;
   padding: 2rem;
@@ -192,7 +331,6 @@ const solicitarAnalitica = () => {
 .resumen-analitica strong {
   color: #e50914;
 }
-
 .btn-ir-favoritos {
   display: inline-block;
   padding: 0.6rem 1.2rem;
