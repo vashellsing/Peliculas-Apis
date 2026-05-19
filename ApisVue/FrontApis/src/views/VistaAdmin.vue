@@ -3,8 +3,7 @@ import { ref, computed } from "vue";
 
 const menuActivo = ref("peliculas");
 
-// --- SIMULACIÓN DE BASE DE DATOS (Alineado al 100% con tu SQL) ---
-
+// --- SIMULACIÓN DE BASE DE DATOS ---
 const datosPeliculas = ref([
   {
     id_pelicula: 1,
@@ -16,9 +15,10 @@ const datosPeliculas = ref([
     actoresPelicula: "Tom Holland, Zendaya, Benedict Cumberbatch",
     generoPelicula: "Accion",
     idiomaPelicula: "Ingles",
-    poster: "https://ejemplo.com/poster.jpg",
+    poster:
+      "https://www.themoviedb.org/t/p/w600_and_h900_face/y3m8fNP6WnGemSPpEXRLyAaTSA1.jpg",
     lema: "El multiverso se desata",
-    trailer: "https://youtube.com/trailer",
+    trailer: "https://www.youtube.com/watch?v=Sn68AF2MGo8r",
   },
 ]);
 
@@ -56,15 +56,25 @@ const datosCarteleras = ref([
   },
 ]);
 
-const listaActual = computed(() => {
-  if (menuActivo.value === "peliculas") return datosPeliculas.value;
-  if (menuActivo.value === "series") return datosSeries.value;
-  if (menuActivo.value === "cines") return datosCines.value;
-  if (menuActivo.value === "cartelera") return datosCarteleras.value;
-  return [];
-});
+// --- HELPER PARA SABER QUÉ ARRAY ESTAMOS EDITANDO ---
+const getArrayActivo = () => {
+  if (menuActivo.value === "peliculas") return datosPeliculas;
+  if (menuActivo.value === "series") return datosSeries;
+  if (menuActivo.value === "cines") return datosCines;
+  if (menuActivo.value === "cartelera") return datosCarteleras;
+};
 
-// --- LÓGICA DEL MODAL ---
+// Helper para saber cómo se llama el "ID" de la sección actual
+const getIdKey = () => {
+  if (menuActivo.value === "peliculas") return "id_pelicula";
+  if (menuActivo.value === "series") return "id_serie";
+  if (menuActivo.value === "cines") return "id_cine";
+  if (menuActivo.value === "cartelera") return "id_cartelera";
+};
+
+const listaActual = computed(() => getArrayActivo().value);
+
+// --- LÓGICA DEL MODAL DE FORMULARIO ---
 const modalVisible = ref(false);
 const esEdicion = ref(false);
 const formulario = ref({});
@@ -118,21 +128,63 @@ const abrirModalAgregar = () => {
 
 const abrirModalEditar = (item) => {
   esEdicion.value = true;
-  formulario.value = { ...item };
+  formulario.value = { ...item }; // Clonamos para no editar en vivo antes de guardar
   modalVisible.value = true;
 };
 
 const cerrarModal = () => (modalVisible.value = false);
 
+// MAGIA FRONTEND: Guardar y actualizar la lista visualmente
 const guardarCambios = () => {
-  console.log("Datos para SQL:", formulario.value);
+  const listaRef = getArrayActivo();
+  const idKey = getIdKey();
+
+  if (esEdicion.value) {
+    // Modo Edición: Buscamos el elemento y lo reemplazamos
+    const index = listaRef.value.findIndex(
+      (item) => item[idKey] === formulario.value[idKey],
+    );
+    if (index !== -1) {
+      listaRef.value[index] = { ...formulario.value };
+    }
+  } else {
+    // Modo Agregar: Simulamos un ID auto-incremental y lo agregamos al arreglo
+    const maxId =
+      listaRef.value.length > 0
+        ? Math.max(...listaRef.value.map((item) => item[idKey]))
+        : 0;
+    formulario.value[idKey] = maxId + 1;
+    listaRef.value.push({ ...formulario.value });
+  }
+
   cerrarModal();
 };
 
-const eliminarItem = (id) => {
-  if (confirm("¿Confirmas que deseas eliminar este registro?")) {
-    console.log(`DELETE FROM ${menuActivo.value} WHERE id = ${id}`);
-  }
+// --- LÓGICA DEL MODAL DE ELIMINACIÓN (Adiós a los confirms del navegador) ---
+const modalEliminarVisible = ref(false);
+const idAEliminar = ref(null);
+
+const solicitarEliminar = (id) => {
+  idAEliminar.value = id;
+  modalEliminarVisible.value = true;
+};
+
+const cancelarEliminar = () => {
+  modalEliminarVisible.value = false;
+  idAEliminar.value = null;
+};
+
+// MAGIA FRONTEND: Eliminar de la lista visualmente
+const confirmarEliminar = () => {
+  const listaRef = getArrayActivo();
+  const idKey = getIdKey();
+
+  // Filtramos el array para dejar afuera el item eliminado
+  listaRef.value = listaRef.value.filter(
+    (item) => item[idKey] !== idAEliminar.value,
+  );
+
+  cancelarEliminar(); // Cerramos el modal
 };
 </script>
 
@@ -175,7 +227,7 @@ const eliminarItem = (id) => {
       <header class="cabecera-contenido">
         <div>
           <h1 class="titulo-seccion">Gestión de {{ menuActivo }}</h1>
-          <p class="subtitulo">Aqui se hacen cositas de admin</p>
+          <p class="subtitulo">Aquí se hacen cositas de admin</p>
         </div>
         <button @click="abrirModalAgregar" class="btn-primario">
           + Agregar Nuevo
@@ -199,7 +251,6 @@ const eliminarItem = (id) => {
               <th>Tráiler</th>
               <th class="texto-centro">Acciones</th>
             </tr>
-
             <tr v-else-if="menuActivo === 'series'">
               <th>ID</th>
               <th>Título</th>
@@ -212,7 +263,6 @@ const eliminarItem = (id) => {
               <th>Idioma</th>
               <th class="texto-centro">Acciones</th>
             </tr>
-
             <tr v-else-if="menuActivo === 'cines'">
               <th>ID</th>
               <th>Nombre</th>
@@ -220,7 +270,6 @@ const eliminarItem = (id) => {
               <th>Ciudad</th>
               <th class="texto-centro">Acciones</th>
             </tr>
-
             <tr v-else-if="menuActivo === 'cartelera'">
               <th>ID</th>
               <th>Peli ID</th>
@@ -232,6 +281,15 @@ const eliminarItem = (id) => {
           </thead>
 
           <tbody>
+            <tr v-if="listaActual.length === 0">
+              <td
+                colspan="12"
+                class="texto-centro"
+                style="padding: 2rem; color: #888"
+              >
+                No hay datos registrados en esta sección.
+              </td>
+            </tr>
             <tr
               v-for="item in listaActual"
               :key="
@@ -310,7 +368,7 @@ const eliminarItem = (id) => {
                 </button>
                 <button
                   @click="
-                    eliminarItem(
+                    solicitarEliminar(
                       item.id_pelicula ||
                         item.id_serie ||
                         item.id_cine ||
@@ -328,6 +386,7 @@ const eliminarItem = (id) => {
       </div>
     </main>
 
+    <!-- MODAL DE FORMULARIO -->
     <div class="overlay-modal" v-if="modalVisible">
       <div class="caja-modal scrollable">
         <h3>{{ esEdicion ? "Editar" : "Agregar" }} {{ menuActivo }}</h3>
@@ -335,21 +394,24 @@ const eliminarItem = (id) => {
         <form @submit.prevent="guardarCambios" class="formulario-modal">
           <template v-if="menuActivo === 'peliculas'">
             <div class="grupo-input">
-              <label>Título</label>
-              <input type="text" v-model="formulario.titulo" required />
+              <label>Título</label
+              ><input type="text" v-model="formulario.titulo" required />
             </div>
             <div class="grupo-input">
-              <label>Título Original</label>
-              <input type="text" v-model="formulario.titulo_originalPelicula" />
+              <label>Título Original</label
+              ><input
+                type="text"
+                v-model="formulario.titulo_originalPelicula"
+              />
             </div>
             <div class="grupo-input">
-              <label>Sinopsis</label>
-              <textarea v-model="formulario.sinopsis" rows="3"></textarea>
+              <label>Sinopsis</label
+              ><textarea v-model="formulario.sinopsis" rows="3"></textarea>
             </div>
             <div class="fila-input">
               <div class="grupo-input flex-1">
-                <label>Año</label>
-                <input type="number" v-model="formulario.anio" />
+                <label>Año</label
+                ><input type="number" v-model="formulario.anio" />
               </div>
               <div class="grupo-input flex-1">
                 <label>Género</label>
@@ -395,50 +457,49 @@ const eliminarItem = (id) => {
               </select>
             </div>
             <div class="grupo-input">
-              <label>Actores (Separados por coma)</label>
-              <textarea
+              <label>Actores (Separados por coma)</label
+              ><textarea
                 v-model="formulario.actoresPelicula"
                 rows="2"
               ></textarea>
             </div>
             <div class="grupo-input">
-              <label>URL Póster</label>
-              <input type="text" v-model="formulario.poster" />
+              <label>URL Póster</label
+              ><input type="text" v-model="formulario.poster" />
             </div>
             <div class="grupo-input">
-              <label>Lema</label>
-              <input type="text" v-model="formulario.lema" />
+              <label>Lema</label><input type="text" v-model="formulario.lema" />
             </div>
             <div class="grupo-input">
-              <label>URL Tráiler</label>
-              <input type="text" v-model="formulario.trailer" />
+              <label>URL Tráiler</label
+              ><input type="text" v-model="formulario.trailer" />
             </div>
           </template>
 
           <template v-else-if="menuActivo === 'series'">
             <div class="grupo-input">
-              <label>Título de la Serie</label>
-              <input type="text" v-model="formulario.tituloSerie" required />
+              <label>Título de la Serie</label
+              ><input type="text" v-model="formulario.tituloSerie" required />
             </div>
             <div class="grupo-input">
-              <label>Título Original</label>
-              <input type="text" v-model="formulario.titulo_originalSerie" />
+              <label>Título Original</label
+              ><input type="text" v-model="formulario.titulo_originalSerie" />
             </div>
             <div class="grupo-input">
-              <label>Sinopsis</label>
-              <textarea v-model="formulario.sinopsisSerie" rows="3"></textarea>
+              <label>Sinopsis</label
+              ><textarea v-model="formulario.sinopsisSerie" rows="3"></textarea>
             </div>
             <div class="fila-input">
               <div class="grupo-input flex-1">
-                <label>Año de Lanzamiento</label>
-                <input
+                <label>Año de Lanzamiento</label
+                ><input
                   type="number"
                   v-model="formulario.anio_lanzamientoSerie"
                 />
               </div>
               <div class="grupo-input flex-1">
-                <label>Temporadas</label>
-                <input
+                <label>Temporadas</label
+                ><input
                   type="number"
                   v-model="formulario.temporadasSerie"
                   min="1"
@@ -491,46 +552,46 @@ const eliminarItem = (id) => {
               </div>
             </div>
             <div class="grupo-input">
-              <label>Actores</label>
-              <textarea v-model="formulario.actoresSerie" rows="2"></textarea>
+              <label>Actores</label
+              ><textarea v-model="formulario.actoresSerie" rows="2"></textarea>
             </div>
           </template>
 
           <template v-else-if="menuActivo === 'cines'">
             <div class="grupo-input">
-              <label>Nombre del Cine</label>
-              <input type="text" v-model="formulario.nombreCine" required />
+              <label>Nombre del Cine</label
+              ><input type="text" v-model="formulario.nombreCine" required />
             </div>
             <div class="grupo-input">
-              <label>Dirección</label>
-              <input type="text" v-model="formulario.direccionCine" />
+              <label>Dirección</label
+              ><input type="text" v-model="formulario.direccionCine" />
             </div>
             <div class="grupo-input">
-              <label>Ciudad</label>
-              <input type="text" v-model="formulario.ciudadCine" />
+              <label>Ciudad</label
+              ><input type="text" v-model="formulario.ciudadCine" />
             </div>
           </template>
 
           <template v-else-if="menuActivo === 'cartelera'">
             <div class="grupo-input">
-              <label>ID Película</label>
-              <input
+              <label>ID Película</label
+              ><input
                 type="number"
                 v-model="formulario.id_peliculaCartelera"
                 required
               />
             </div>
             <div class="grupo-input">
-              <label>ID Cine</label>
-              <input
+              <label>ID Cine</label
+              ><input
                 type="number"
                 v-model="formulario.id_cineCartelera"
                 required
               />
             </div>
             <div class="grupo-input">
-              <label>Fecha y Hora</label>
-              <input
+              <label>Fecha y Hora</label
+              ><input
                 type="datetime-local"
                 v-model="formulario.fecha_horaCartelera"
                 required
@@ -555,10 +616,30 @@ const eliminarItem = (id) => {
         </form>
       </div>
     </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN -->
+    <div class="overlay-modal" v-if="modalEliminarVisible">
+      <div class="caja-modal modal-pequeno">
+        <h3 style="color: #cc0000; margin-top: 0">¡Atención!</h3>
+        <p>
+          ¿Estás seguro de que deseas eliminar este registro? Esta acción no se
+          puede deshacer.
+        </p>
+        <div class="acciones-modal">
+          <button @click="cancelarEliminar" class="btn-cancelar">
+            No, cancelar
+          </button>
+          <button @click="confirmarEliminar" class="btn-eliminar-confirmar">
+            Sí, eliminar
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* Tus estilos anteriores se mantienen intactos, solo añado para el nuevo modal */
 .layout-admin {
   display: flex;
   min-height: 100vh;
@@ -658,7 +739,6 @@ const eliminarItem = (id) => {
   background-color: #333;
 }
 
-/* NUEVO: Contenedor de tabla con scroll horizontal */
 .contenedor-tabla {
   background: white;
   border-radius: 8px;
@@ -687,7 +767,6 @@ const eliminarItem = (id) => {
   z-index: 1;
 }
 
-/* NUEVO: Truncar textos largos en la tabla */
 .truncar-texto {
   max-width: 150px;
   overflow: hidden;
@@ -747,7 +826,7 @@ const eliminarItem = (id) => {
   color: #475569;
 }
 
-/* MODAL */
+/* MODALES */
 .overlay-modal {
   position: fixed;
   top: 0;
@@ -768,6 +847,9 @@ const eliminarItem = (id) => {
   max-width: 600px;
   max-height: 90vh;
 }
+.modal-pequeno {
+  max-width: 400px;
+} /* Nuevo para confirmaciones */
 .scrollable {
   overflow-y: auto;
 }
@@ -821,5 +903,19 @@ const eliminarItem = (id) => {
   padding: 0.6rem 1.2rem;
   cursor: pointer;
   border-radius: 4px;
+}
+
+/* Nuevo Botón eliminar modal */
+.btn-eliminar-confirmar {
+  background: #cc0000;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  cursor: pointer;
+  border-radius: 4px;
+  font-weight: bold;
+}
+.btn-eliminar-confirmar:hover {
+  background: #990000;
 }
 </style>

@@ -7,30 +7,31 @@ import TarjetaPelicula from "@/components/TarjetaPelicula.vue";
 const seriesMock = ref([
   {
     id: 1,
-    titulo: "El Origen",
+    titulo: "The boys",
     calificacion: 8.8,
     imagenUrl:
-      "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=El+Origen",
+      "https://www.themoviedb.org/t/p/w600_and_h900_face/5kgY14oisiHcJ4zq0Xgq1e97PHm.jpg",
   },
   {
     id: 2,
-    titulo: "Interestelar",
+    titulo: "Sobrenarutal",
     calificacion: 8.6,
     imagenUrl:
-      "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Interestelar",
+      "https://www.themoviedb.org/t/p/w600_and_h900_face/58Qaj36FZDz54H36LsUI8mGiW9y.jpg",
   },
   {
     id: 3,
-    titulo: "Matrix",
+    titulo: "El mentalista",
     calificacion: 8.7,
-    imagenUrl: "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Matrix",
+    imagenUrl:
+      "https://www.themoviedb.org/t/p/w600_and_h900_face/snKUzvCl3kGv0RWBjEjnOXMGvdl.jpg",
   },
   {
     id: 4,
-    titulo: "El Padrino",
+    titulo: "Dr. House",
     calificacion: 9.2,
     imagenUrl:
-      "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=El+Padrino",
+      "https://www.themoviedb.org/t/p/w600_and_h900_face/lW7MvZ4m49IUj2UrUu4z0xVVl81.jpg",
   },
   {
     id: 5,
@@ -89,7 +90,7 @@ const cambiarPagina = (nuevaPagina) => {
           :disabled="paginaActual === 1"
           @click="cambiarPagina(paginaActual - 1)"
         >
-          &laquo; Anterior
+          &laquo; <span class="texto-btn">Anterior</span>
         </button>
 
         <div class="numeros-pagina">
@@ -109,7 +110,7 @@ const cambiarPagina = (nuevaPagina) => {
           :disabled="paginaActual === totalPaginas"
           @click="cambiarPagina(paginaActual + 1)"
         >
-          Siguiente &raquo;
+          <span class="texto-btn">Siguiente</span> &raquo;
         </button>
       </div>
     </section>
@@ -137,13 +138,14 @@ const cambiarPagina = (nuevaPagina) => {
 }
 
 /* ========================================== */
-/* ESTILOS DE LA PAGINACIÓN (NUEVO)           */
+/* ESTILOS DE PAGINACIÓN RESPONSIVE           */
 /* ========================================== */
 .paginacion {
   display: flex;
+  flex-wrap: wrap; /* PERMITE QUE LOS ELEMENTOS CAIGAN A OTRA LÍNEA SI NO CABEN */
   justify-content: center;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1rem;
   margin-top: 2rem;
   padding-top: 2rem;
   border-top: 1px solid #eaeaea;
@@ -151,6 +153,8 @@ const cambiarPagina = (nuevaPagina) => {
 
 .numeros-pagina {
   display: flex;
+  flex-wrap: wrap; /* Si hay muchas páginas, que formen un bloque bonito */
+  justify-content: center;
   gap: 0.5rem;
 }
 
@@ -165,16 +169,22 @@ const cambiarPagina = (nuevaPagina) => {
   font-family: sans-serif;
   font-weight: bold;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .btn-numero {
   padding: 0.5rem 0.8rem;
+  min-width: 40px; /* Para que los botones numéricos sean cuadraditos uniformes */
+  justify-content: center;
 }
 
 .btn-paginacion:hover:not(:disabled),
 .btn-numero:hover:not(.activo) {
   background-color: #f5f5f5;
   border-color: #999;
+  transform: translateY(-2px); /* Un leve saltito al pasar el mouse */
 }
 
 .btn-numero.activo {
@@ -188,5 +198,28 @@ const cambiarPagina = (nuevaPagina) => {
   color: #aaa;
   border-color: #eee;
   cursor: not-allowed;
+  transform: none;
+}
+
+/* --- REGLAS PARA CELULARES (PANTALLAS PEQUEÑAS) --- */
+@media (max-width: 600px) {
+  .paginacion {
+    gap: 0.8rem;
+  }
+
+  .btn-paginacion {
+    padding: 0.5rem 0.8rem;
+  }
+
+  .btn-numero {
+    padding: 0.4rem 0.6rem;
+    min-width: 35px;
+    font-size: 0.9rem;
+  }
+
+  /* Ocultamos la palabra "Anterior/Siguiente", dejamos solo las flechas « » */
+  .texto-btn {
+    display: none;
+  }
 }
 </style>
