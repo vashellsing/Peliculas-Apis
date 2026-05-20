@@ -18,7 +18,7 @@ const router = createRouter({
       component: VistaInicio,
     },
     {
-      // Usamos :id para que en un futuro la URL sea dinámica (ej. /pelicula/1)
+      
       path: '/pelicula/:id',
       name: 'detalle',
       component: VistaDetalle,

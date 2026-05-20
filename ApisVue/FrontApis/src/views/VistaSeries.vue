@@ -42,29 +42,26 @@ const seriesMock = ref([
   },
 ]);
 
-// ==========================================
-// LÓGICA DE PAGINACIÓN (NUEVO)
-// ==========================================
-const paginaActual = ref(1);
-const elementosPorPagina = 4; // Cambia este número para mostrar más o menos tarjetas por página
+// PAGINACION
 
-// Calculamos cuántas páginas habrá en total
+const paginaActual = ref(1);
+const elementosPorPagina = 4;
+
 const totalPaginas = computed(() => {
   return Math.ceil(seriesMock.value.length / elementosPorPagina);
 });
 
-// Segmentamos el arreglo original para extraer solo las series de la página activa
 const seriesPaginadas = computed(() => {
   const inicio = (paginaActual.value - 1) * elementosPorPagina;
   const fin = inicio + elementosPorPagina;
   return seriesMock.value.slice(inicio, fin);
 });
 
-// Función para navegar entre páginas
+// FunciOn para navegar entre pAginas
 const cambiarPagina = (nuevaPagina) => {
   if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas.value) {
     paginaActual.value = nuevaPagina;
-    window.scrollTo({ top: 0, behavior: "smooth" }); // Sube la pantalla suavemente
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 };
 </script>
@@ -138,12 +135,11 @@ const cambiarPagina = (nuevaPagina) => {
   margin-bottom: 3rem;
 }
 
-/* ========================================== */
-/* ESTILOS DE PAGINACIÓN RESPONSIVE           */
-/* ========================================== */
+/* RESPONSIVE APGINACION        */
+
 .paginacion {
   display: flex;
-  flex-wrap: wrap; /* PERMITE QUE LOS ELEMENTOS CAIGAN A OTRA LÍNEA SI NO CABEN */
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   gap: 1rem;
@@ -154,7 +150,7 @@ const cambiarPagina = (nuevaPagina) => {
 
 .numeros-pagina {
   display: flex;
-  flex-wrap: wrap; /* Si hay muchas páginas, que formen un bloque bonito */
+  flex-wrap: wrap;
   justify-content: center;
   gap: 0.5rem;
 }
@@ -177,7 +173,7 @@ const cambiarPagina = (nuevaPagina) => {
 
 .btn-numero {
   padding: 0.5rem 0.8rem;
-  min-width: 40px; /* Para que los botones numéricos sean cuadraditos uniformes */
+  min-width: 40px;
   justify-content: center;
 }
 
@@ -185,7 +181,7 @@ const cambiarPagina = (nuevaPagina) => {
 .btn-numero:hover:not(.activo) {
   background-color: #f5f5f5;
   border-color: #999;
-  transform: translateY(-2px); /* Un leve saltito al pasar el mouse */
+  transform: translateY(-2px);
 }
 
 .btn-numero.activo {
@@ -202,7 +198,6 @@ const cambiarPagina = (nuevaPagina) => {
   transform: none;
 }
 
-/* --- REGLAS PARA CELULARES (PANTALLAS PEQUEÑAS) --- */
 @media (max-width: 600px) {
   .paginacion {
     gap: 0.8rem;
@@ -218,7 +213,6 @@ const cambiarPagina = (nuevaPagina) => {
     font-size: 0.9rem;
   }
 
-  /* Ocultamos la palabra "Anterior/Siguiente", dejamos solo las flechas « » */
   .texto-btn {
     display: none;
   }

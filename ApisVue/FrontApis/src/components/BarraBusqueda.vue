@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue' // <-- Añadimos onMounted
+import { ref, onMounted } from 'vue' 
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -7,14 +7,14 @@ const router = useRouter()
 const textoBusqueda = ref('')
 const generoSeleccionado = ref('')
 
-// ── Nuevo: estado para el poster de fondo ──────────────────────────────────
+
 const urlPoster = ref(null)
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 const cargarPosterAleatorio = async () => {
   try {
     const respuesta = await fetch(`${API_BASE}/peliculas/poster-aleatorio`, {
-      headers: { "x-api-key": "mi_super_api_key_fija_123" }  // misma key
+      headers: { "x-api-key": "mi_super_api_key_fija_123" } 
     })
     if (!respuesta.ok) return
 
@@ -34,7 +34,7 @@ const cargarPosterAleatorio = async () => {
 onMounted(() => {
   cargarPosterAleatorio()
 })
-// ──────────────────────────────────────────────────────────────────────────
+
 
 const realizarBusqueda = () => {
   const queryParams = {}
@@ -53,7 +53,7 @@ const realizarBusqueda = () => {
 </script>
 
 <template>
-  <!-- :style aplica la imagen si existe, si no queda el background-color del CSS -->
+
   <section
     class="seccion-busqueda"
     :style="urlPoster ? {
@@ -63,7 +63,7 @@ const realizarBusqueda = () => {
       backgroundRepeat: 'no-repeat'
     } : {}"
   >
-    <!-- Overlay: solo aparece cuando hay imagen, para mantener el texto legible -->
+    <!-- solo aparece cuando hay imagen, para mantener el texto legible -->
     <div v-if="urlPoster" class="overlay"></div>
 
     <div class="contenedor-buscador">
@@ -99,11 +99,11 @@ const realizarBusqueda = () => {
 <style scoped>
 .seccion-busqueda {
   padding: 3rem 2rem;
-  background-color: #f5f5f5; /* Fallback si no hay poster */
+  background-color: #f5f5f5; 
   display: flex;
   justify-content: center;
   font-family: sans-serif;
-  position: relative; /* Necesario para que el overlay se posicione dentro */
+  position: relative; 
 }
 
 /* Overlay oscuro solo cuando hay imagen de fondo */
@@ -117,19 +117,17 @@ const realizarBusqueda = () => {
   width: 100%;
   max-width: 800px;
   text-align: center;
-  position: relative; /* Se mantiene encima del overlay */
+  position: relative;
   z-index: 1;
 }
 
 .contenedor-buscador h2 {
   margin-bottom: 1.5rem;
   font-size: 1.8rem;
-  /* El color cambia según haya imagen o no */
   color: v-bind("urlPoster ? '#ffffff' : '#333'");
   text-shadow: v-bind("urlPoster ? '0 2px 8px rgba(0,0,0,0.7)' : 'none'");
 }
 
-/* Todo lo demás sin cambios */
 .formulario-busqueda {
   display: flex;
   gap: 0.5rem;

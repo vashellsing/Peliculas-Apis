@@ -41,11 +41,11 @@ const seriesMock = ref([
   },
 ]);
 
-// ==========================================
-// LÓGICA DE PAGINACIÓN
-// ==========================================
+
+// LOGICA DE PAGINACIÓN
+
 const paginaActual = ref(1);
-const elementosPorPagina = 4; // Ajusta cuántos favoritos ver por página
+const elementosPorPagina = 4; 
 
 const totalPaginas = computed(() => {
   return Math.ceil(seriesMock.value.length / elementosPorPagina);
@@ -71,7 +71,6 @@ const cambiarPagina = (nuevaPagina) => {
       <h2 class="titulo-seccion">Mis favoritos</h2>
 
       <div class="cuadricula-peliculas">
-        <!-- ¡Importante! Cambiamos el v-for a seriesPaginadas -->
         <TarjetaPelicula
           v-for="serie in seriesPaginadas"
           :key="serie.id"
@@ -80,8 +79,7 @@ const cambiarPagina = (nuevaPagina) => {
           :imagenUrl="serie.imagenUrl"
         />
       </div>
-
-      <!-- Controles de paginación idénticos al resto de la app -->
+      <!-- PAGINACION -->
       <div class="paginacion" v-if="totalPaginas > 1">
         <button
           class="btn-paginacion"
@@ -132,12 +130,12 @@ const cambiarPagina = (nuevaPagina) => {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 2rem;
-  margin-bottom: 3rem; /* Espacio añadido para separar de la paginación */
+  margin-bottom: 3rem; 
 }
 
-/* ========================================== */
-/* ESTILOS DE PAGINACIÓN RESPONSIVE           */
-/* ========================================== */
+
+/* ESTILOS DE RESPONSIVE PARA LA PAGINACION */
+
 .paginacion {
   display: flex;
   flex-wrap: wrap;

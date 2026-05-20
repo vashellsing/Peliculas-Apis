@@ -1,5 +1,5 @@
 <script setup>
-// Por ahora no necesitamos lógica aquí, solo estructura visual
+
 const anioActual = new Date().getFullYear();
 </script>
 
@@ -46,11 +46,11 @@ const anioActual = new Date().getFullYear();
 <style scoped>
 /* Estilos del pie de página */
 .pie-pagina {
-  background-color: #1a1a1a; /* Gris muy oscuro, casi negro */
-  color: #cccccc; /* Texto en gris claro para contraste */
+  background-color: #1a1a1a;
+  color: #cccccc;
   padding: 3rem 2rem 1rem 2rem;
   font-family: sans-serif;
-  margin-top: 4rem; /* Lo separa un poco del contenido principal */
+  margin-top: 4rem; 
 }
 
 .contenedor-footer {
@@ -66,7 +66,7 @@ const anioActual = new Date().getFullYear();
 .enlaces-footer {
   display: flex;
   gap: 2rem;
-  flex-wrap: wrap; /* Si la pantalla es pequeña, se acomodan abajo */
+  flex-wrap: wrap; 
   justify-content: center;
 }
 
@@ -78,7 +78,7 @@ const anioActual = new Date().getFullYear();
 }
 
 .enlaces-footer a:hover {
-  color: #ffffff; /* Brilla un poco al pasar el cursor */
+  color: #ffffff; 
 }
 
 /* Redes sociales */

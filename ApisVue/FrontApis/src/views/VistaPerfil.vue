@@ -9,12 +9,11 @@ const usuario = ref({
   avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
 });
 
-// --- LÓGICA DE EDICIÓN DE PERFIL ---
+// --- EDICION DEL PERFIL ---
 const editando = ref(false);
 const formulario = ref({});
 
 const activarEdicion = () => {
-  // Clonamos los datos actuales al formulario para no afectar la vista antes de guardar
   formulario.value = { ...usuario.value };
   editando.value = true;
 };
@@ -24,13 +23,12 @@ const cancelarEdicion = () => {
 };
 
 const guardarCambios = () => {
-  // Pasamos los datos del formulario de vuelta al usuario y cerramos el modo edición
   usuario.value = { ...formulario.value };
   editando.value = false;
   console.log("Datos actualizados (Simulación):", usuario.value);
 };
 
-// --- LÓGICA DE ANALÍTICA ---
+// --- ANALITICA ---
 const cargandoAnalitica = ref(false);
 const mostrarGrafica = ref(false);
 
@@ -66,7 +64,7 @@ const solicitarAnalitica = () => {
             </button>
           </template>
 
-          <!-- VISTA DE EDICIÓN -->
+          <!-- VISTA DE EDICION -->
           <form
             v-else
             @submit.prevent="guardarCambios"
@@ -98,7 +96,7 @@ const solicitarAnalitica = () => {
           </form>
         </div>
 
-        <!-- CAJA DE ANALÍTICA (Se mantiene igual) -->
+        <!-- CAJA DE LA ANALITICA -->
         <div class="caja-analitica">
           <h3>ADN Cinéfilo</h3>
           <p>Descubre qué géneros dominan tus favoritos.</p>
@@ -117,7 +115,7 @@ const solicitarAnalitica = () => {
         </div>
       </header>
 
-      <!-- RESULTADO GRÁFICA -->
+      <!-- RESULTADO GRAFICA -->
       <div v-if="mostrarGrafica" class="resultado-grafica">
         <h2>Tu Perfil de Espectador</h2>
         <img
@@ -190,7 +188,7 @@ const solicitarAnalitica = () => {
   color: #999;
 }
 
-/* NUEVOS ESTILOS PARA EDICIÓN */
+/* NUEVOS ESTILOS PARA EDICION */
 .btn-editar-perfil {
   margin-top: 1rem;
   background-color: #f0f0f0;
@@ -261,7 +259,6 @@ const solicitarAnalitica = () => {
   background: #333;
 }
 
-/* RESTO DE ESTILOS ORIGINALES */
 .caja-analitica {
   background-color: #1a1a1a;
   color: white;

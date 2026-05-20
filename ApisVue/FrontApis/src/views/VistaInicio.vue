@@ -9,9 +9,8 @@ const peliculas = ref([]);
 const cargando = ref(true);
 const error = ref(null);
 
-// --- VARIABLES DE PAGINACIÓN ---
 const paginaActual = ref(1);
-const elementosPorPagina = 8; // Puedes ajustar cuántas películas quieres ver por página
+const elementosPorPagina = 8;
 
 const cargarPeliculas = async () => {
   try {
@@ -42,7 +41,7 @@ const cargarPeliculas = async () => {
   }
 };
 
-// --- LÓGICA COMPUTADA PARA PAGINACIÓN ---
+// --- lOGICA PAGINACION ---
 const totalPaginas = computed(() => {
   return Math.ceil(peliculas.value.length / elementosPorPagina);
 });
@@ -60,16 +59,16 @@ const cambiarPagina = (nuevaPagina) => {
   }
 };
 
-// 1. Cargar al inicio
+// Cargar al inicio
 onMounted(() => {
   cargarPeliculas();
 });
 
-// 2. Escuchar cambios en la URL (Nueva búsqueda o filtro)
+// Escuchar cambios en la URL PARA LA BUSQUEDA
 watch(
   () => route.query,
   () => {
-    paginaActual.value = 1; // ¡CRUCIAL! Regresamos a la página 1 al buscar algo nuevo
+    paginaActual.value = 1;
     cargarPeliculas();
   },
 );
@@ -150,7 +149,7 @@ watch(
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 2rem;
-  margin-bottom: 3rem; /* Espacio para la paginación */
+  margin-bottom: 3rem;
 }
 
 .estado-mensaje {
@@ -166,12 +165,11 @@ watch(
   font-weight: bold;
 }
 
-/* ========================================== */
-/* ESTILOS DE PAGINACIÓN RESPONSIVE */
-/* ========================================== */
+/* PAGINACION */
+
 .paginacion {
   display: flex;
-  flex-wrap: wrap; /* PERMITE QUE LOS ELEMENTOS CAIGAN A OTRA LÍNEA SI NO CABEN */
+  flex-wrap: wrap;
   justify-content: center;
   align-items: center;
   gap: 1rem;
@@ -182,7 +180,7 @@ watch(
 
 .numeros-pagina {
   display: flex;
-  flex-wrap: wrap; /* Si hay muchas páginas, que formen un bloque bonito */
+  flex-wrap: wrap;
   justify-content: center;
   gap: 0.5rem;
 }
@@ -205,7 +203,7 @@ watch(
 
 .btn-numero {
   padding: 0.5rem 0.8rem;
-  min-width: 40px; /* Para que los botones numéricos sean cuadraditos uniformes */
+  min-width: 40px;
   justify-content: center;
 }
 
@@ -213,7 +211,7 @@ watch(
 .btn-numero:hover:not(.activo) {
   background-color: #f5f5f5;
   border-color: #999;
-  transform: translateY(-2px); /* Un leve saltito al pasar el mouse */
+  transform: translateY(-2px);
 }
 
 .btn-numero.activo {
@@ -230,7 +228,7 @@ watch(
   transform: none;
 }
 
-/* --- REGLAS PARA CELULARES (PANTALLAS PEQUEÑAS) --- */
+/* RESPONSIVE */
 @media (max-width: 600px) {
   .paginacion {
     gap: 0.8rem;
@@ -245,8 +243,6 @@ watch(
     min-width: 35px;
     font-size: 0.9rem;
   }
-
-  /* Ocultamos la palabra "Anterior/Siguiente", dejamos solo las flechas « » */
   .texto-btn {
     display: none;
   }
