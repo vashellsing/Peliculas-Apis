@@ -23,15 +23,7 @@ const funcionesDisponibles = ref([
     direccionCine: "C.C. Campanario",
     fecha_hora: "2026-05-20 a las 18:30",
     idioma: "Doblada al Espanol",
-  },
-  {
-    id_cartelera: 2,
-    nombreCine: "Royal Films",
-    ciudadCine: "Popayán",
-    direccionCine: "C.C. Terra Plaza",
-    fecha_hora: "2026-05-20 a las 21:00",
-    idioma: "Subtitulada",
-  },
+  }
 ]);
 
 // Esta función "traduce" el link de YouTube al formato Embed que permite la web
@@ -192,7 +184,7 @@ onMounted(() => {
                 </div>
               </div>
 
-              <a class="btn-boletos" href="http://">Ir al cine</a>
+              <a class="btn-boletos" href="https://www.cinecolombia.com/" target="_blank">Ir al cine</a>
             </div>
           </div>
 
