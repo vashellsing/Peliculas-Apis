@@ -38,15 +38,15 @@ defineProps({
 .tarjeta-serie {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  overflow: hidden; /* Para que la imagen no se salga de los bordes redondeados */
+  overflow: hidden; 
   background-color: #fff;
   display: flex;
   flex-direction: column;
   font-family: sans-serif;
-  transition: transform 0.2s ease; /* Pequeña animación */
+  transition: transform 0.2s ease; 
 }
 
-/* Efecto al pasar el mouse por encima */
+
 .tarjeta-serie:hover {
   transform: translateY(-5px);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
@@ -55,7 +55,7 @@ defineProps({
 .contenedor-imagen {
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 3; /* Proporción clásica de póster de cine */
+  aspect-ratio: 2 / 3; 
   background-color: #ddd;
 }
 
@@ -81,7 +81,7 @@ defineProps({
   padding: 1.2rem;
   display: flex;
   flex-direction: column;
-  flex-grow: 1; /* Empuja el botón hacia abajo si el título es corto */
+  flex-grow: 1; 
   justify-content: space-between;
 }
 
@@ -93,16 +93,16 @@ defineProps({
 }
 
 .btn-detalles {
-  display: block; /* Fuerza a que el botón tome su propia línea */
-  width: 100%; /* Ocupa todo el ancho disponible */
-  padding: 0.8rem; /* Un poco más despacio para que se vea mejor */
+  display: block; 
+  width: 100%; 
+  padding: 0.8rem; 
   background-color: #4a4a4a;
   color: white;
-  text-decoration: none; /* Le quita la línea de enlace */
-  text-align: center; /* Centra el texto perfectamente */
+  text-decoration: none; 
+  text-align: center; 
   border-radius: 4px;
   font-weight: bold;
-  box-sizing: border-box; /* Evita que el botón se desborde hacia los lados */
+  box-sizing: border-box; 
   transition: background-color 0.2s;
 }
 

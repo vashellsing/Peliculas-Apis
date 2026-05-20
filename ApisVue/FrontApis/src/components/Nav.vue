@@ -1,5 +1,5 @@
   <script setup>
-  // Aquí más adelante podremos agregar la lógica para saber si el usuario inició sesión
+  
   </script>
 
   <template>
@@ -45,7 +45,7 @@
   </template>
 
   <style scoped>
-  /* Estilos para que se vea como en tu diseño */
+
   .barra-navegacion {
   display: flex;
   justify-content: space-between;
@@ -91,7 +91,7 @@
     gap: 1rem;
   }
 
-  /* Unificamos los estilos base para ambos botones/enlaces */
+  
   .btn-primario,
   .btn-secundario {
     cursor: pointer;
@@ -99,8 +99,8 @@
     border-radius: 4px;
     font-size: 0.9rem;
     font-family: sans-serif;
-    text-decoration: none; /* Quita la línea de abajo típica de los enlaces */
-    display: inline-block; /* Hace que respeten el padding y se vean cuadrados */
+    text-decoration: none; 
+    display: inline-block;
     text-align: center;
     box-sizing: border-box;
   }

@@ -1,7 +1,6 @@
 <script setup>
 import { ref } from "vue";
 
-// Hemos reemplazado 'icono' y 'color' por 'imagenUrl' usando pósters icónicos reales
 const generos = ref([
   {
     nombre: "Accion",
@@ -94,7 +93,7 @@ const generos = ref([
 }
 
 .contenedor-principal {
-  max-width: 1200px; /* Un poco más ancho para que quepan bien las fotos */
+  max-width: 1200px;
   margin: 0 auto;
   text-align: center;
 }
@@ -120,10 +119,10 @@ const generos = ref([
 /* Estilos de la tarjeta con imagen de fondo */
 .tarjeta-genero {
   position: relative;
-  height: 180px; /* Altura fija para que todas se vean igual */
+  height: 180px;
   border-radius: 12px;
   text-decoration: none;
-  overflow: hidden; /* Para que la imagen no se salga de los bordes redondeados */
+  overflow: hidden;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   background-size: cover;
   background-position: center;
@@ -133,19 +132,18 @@ const generos = ref([
 }
 
 .tarjeta-genero:hover {
-  transform: scale(1.03); /* Efecto de acercamiento al pasar el mouse */
+  transform: scale(1.03);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   z-index: 2;
 }
 
-/* Capa semitransparente sobre la imagen */
 .capa-oscura {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5); /* Negro al 50% de opacidad */
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -153,12 +151,7 @@ const generos = ref([
 }
 
 .tarjeta-genero:hover .capa-oscura {
-  background-color: rgba(
-    0,
-    0,
-    0,
-    0.3
-  ); /* Se aclara un poco al pasar el mouse */
+  background-color: rgba(0, 0, 0, 0.3);
 }
 
 .nombre-genero {
@@ -167,7 +160,7 @@ const generos = ref([
   color: white;
   font-weight: bold;
   text-transform: uppercase;
-  letter-spacing: 2px; /* Letras un poco más separadas, estilo póster */
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); /* Sombra dura para extra legibilidad */
+  letter-spacing: 2px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
 }
 </style>

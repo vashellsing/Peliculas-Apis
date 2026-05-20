@@ -5,16 +5,15 @@ import axios from "axios";
 
 const route = useRoute();
 
-// Variables reactivas
+
 const pelicula = ref(null);
 const cargando = ref(true);
 const error = ref(null);
 
-// Variables para el Modal del Tráiler
+// Variables para el Modal del Trailer
 const mostrarModal = ref(false);
 
-// NUEVO: Variables para la Cartelera (simuladas por ahora)
-// En el futuro, esto podría venir dentro de la respuesta de tu API (ej. pelicula.value.carteleras)
+
 const funcionesDisponibles = ref([
   {
     id_cartelera: 1,
@@ -26,7 +25,7 @@ const funcionesDisponibles = ref([
   }
 ]);
 
-// Esta función "traduce" el link de YouTube al formato Embed que permite la web
+// Convertimos el link para que funcione a embed
 const trailerEmbedUrl = computed(() => {
   if (!pelicula.value || !pelicula.value.trailer) return "";
 
@@ -58,7 +57,7 @@ const cargarDetalles = async () => {
   }
 };
 
-// Abre el modal en lugar de salir de la página
+// Abre el modal en lugar de salir de la vista
 const abrirTrailer = () => {
   if (pelicula.value.trailer) {
     mostrarModal.value = true;
@@ -268,7 +267,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* (Tu CSS anterior intacto) */
+
 .vista-detalle {
   font-family: sans-serif;
   color: #333;
@@ -397,7 +396,7 @@ button:hover {
   color: #f5c518;
 }
 
-/* NUEVO CSS: CARTELERA */
+/* CARTELERA */
 .seccion-cartelera-pelicula {
   margin-bottom: 4rem;
   border-bottom: 1px solid #eee;
@@ -488,7 +487,6 @@ button:hover {
   font-style: italic;
 }
 
-/* Resto de tu CSS original */
 .seccion-reparto {
   margin-bottom: 4rem;
 }

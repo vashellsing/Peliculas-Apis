@@ -128,19 +128,19 @@ const abrirModalAgregar = () => {
 
 const abrirModalEditar = (item) => {
   esEdicion.value = true;
-  formulario.value = { ...item }; // Clonamos para no editar en vivo antes de guardar
+  formulario.value = { ...item };
   modalVisible.value = true;
 };
 
 const cerrarModal = () => (modalVisible.value = false);
 
-// MAGIA FRONTEND: Guardar y actualizar la lista visualmente
+// Guardar y actualizar la lista visualmente
 const guardarCambios = () => {
   const listaRef = getArrayActivo();
   const idKey = getIdKey();
 
   if (esEdicion.value) {
-    // Modo Edición: Buscamos el elemento y lo reemplazamos
+    // Buscamos el elemento y lo reemplazamos
     const index = listaRef.value.findIndex(
       (item) => item[idKey] === formulario.value[idKey],
     );
@@ -148,7 +148,7 @@ const guardarCambios = () => {
       listaRef.value[index] = { ...formulario.value };
     }
   } else {
-    // Modo Agregar: Simulamos un ID auto-incremental y lo agregamos al arreglo
+    // Simulamos un ID auto-incremental y lo agregamos al arreglo
     const maxId =
       listaRef.value.length > 0
         ? Math.max(...listaRef.value.map((item) => item[idKey]))
@@ -160,7 +160,7 @@ const guardarCambios = () => {
   cerrarModal();
 };
 
-// --- LÓGICA DEL MODAL DE ELIMINACIÓN (Adiós a los confirms del navegador) ---
+
 const modalEliminarVisible = ref(false);
 const idAEliminar = ref(null);
 
@@ -174,7 +174,7 @@ const cancelarEliminar = () => {
   idAEliminar.value = null;
 };
 
-// MAGIA FRONTEND: Eliminar de la lista visualmente
+//Eliminar de la lista visualmente
 const confirmarEliminar = () => {
   const listaRef = getArrayActivo();
   const idKey = getIdKey();
@@ -184,7 +184,7 @@ const confirmarEliminar = () => {
     (item) => item[idKey] !== idAEliminar.value,
   );
 
-  cancelarEliminar(); // Cerramos el modal
+  cancelarEliminar();
 };
 </script>
 
@@ -639,7 +639,8 @@ const confirmarEliminar = () => {
 </template>
 
 <style scoped>
-/* Tus estilos anteriores se mantienen intactos, solo añado para el nuevo modal */
+
+
 .layout-admin {
   display: flex;
   min-height: 100vh;
@@ -849,6 +850,7 @@ const confirmarEliminar = () => {
 }
 .modal-pequeno {
   max-width: 400px;
+
 } /* Nuevo para confirmaciones */
 .scrollable {
   overflow-y: auto;

@@ -7,7 +7,7 @@ const router = useRouter()
 
 const esRegistro = ref(false)
 const cargando = ref(false)
-const mensajeVisual = ref({ texto: '', tipo: '' }) // Para mostrar errores o éxitos
+const mensajeVisual = ref({ texto: '', tipo: '' })
 
 const formulario = ref({
   nombreUsuario: '',
@@ -25,7 +25,7 @@ const enviarFormulario = async () => {
   cargando.value = true
   mensajeVisual.value = { texto: '', tipo: '' }
 
-  // 1. ARMAMOS EL XML DEPENDIENDO SI ES REGISTRO O LOGIN
+  // ARMAMOS EL XML DEPENDIENDO SI ES REGISTRO O LOGIN
   let xmlSOAP = ''
 
   if (esRegistro.value) {
@@ -52,19 +52,19 @@ const enviarFormulario = async () => {
   }
 
   try {
-    // 2. ENVIAMOS LA PETICIÓN POST AL SERVIDOR SOAP
+    //ENVIAMOS LA PETICIÓN POST AL SERVIDOR SOAP
     const respuesta = await axios.post('http://127.0.0.1:8000/', xmlSOAP, {
       headers: { 'Content-Type': 'text/xml' },
     })
 
-    // 3. LEEMOS EL XML DE RESPUESTA
+    //LEEMOS EL XML DE RESPUESTA
     const parser = new DOMParser()
     const xmlDoc = parser.parseFromString(respuesta.data, 'text/xml')
 
-    // Truco: textContent saca el texto plano (el token o el error) limpiando las etiquetas XML
+    // textContent saca el texto plano (el token o el error) limpiando las etiquetas XML
     const resultado = xmlDoc.documentElement.textContent.trim()
 
-    // 4. LÓGICA DE DECISIÓN
+    // la logica de desicion
     if (resultado.includes('Error')) {
       mensajeVisual.value = { texto: resultado, tipo: 'error' }
     } else {
@@ -73,10 +73,9 @@ const enviarFormulario = async () => {
           texto: '¡Registro exitoso! Por favor, inicia sesión.',
           tipo: 'exito',
         }
-        esRegistro.value = false // Lo pasamos al formulario de login
-        formulario.value.contrasena = '' // Borramos la contraseña por seguridad
+        esRegistro.value = false 
+        formulario.value.contrasena = ''
       } else {
-        // ¡LOGIN EXITOSO! Guardamos el JWT en el navegador
         localStorage.setItem('token_cine', resultado)
         // Redirigimos a la página principal
         router.push('/')
@@ -99,7 +98,7 @@ const enviarFormulario = async () => {
     <div class="contenedor-formulario">
       <h2 class="titulo">{{ esRegistro ? 'Crear una cuenta' : 'Bienvenido de nuevo' }}</h2>
 
-      <!-- Alerta visual para errores o éxitos -->
+      <!-- Alerta visual para errores o casos exitosos -->
       <div v-if="mensajeVisual.texto" :class="['alerta', mensajeVisual.tipo]">
         {{ mensajeVisual.texto }}
       </div>
@@ -153,7 +152,7 @@ const enviarFormulario = async () => {
 </template>
 
 <style scoped>
-/* Tu CSS original intacto + Estilos para las alertas */
+
 .vista-autenticacion {
   display: flex;
   justify-content: center;
@@ -238,7 +237,7 @@ const enviarFormulario = async () => {
   color: #999;
 }
 
-/* NUEVO: Clases para las alertas */
+/*Clases para las alertas */
 .alerta {
   padding: 1rem;
   border-radius: 4px;
