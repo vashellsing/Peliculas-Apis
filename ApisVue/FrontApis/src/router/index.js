@@ -7,6 +7,7 @@ import VistaAdmin from '@/views/VistaAdmin.vue'
 import vistaFavoritos from '@/views/VistaFavoritos.vue'
 import VistaPerfil from '@/views/VistaPerfil.vue'
 import VistaGeneros from '@/views/VistaGeneros.vue'
+import SerieDetalle from '@/views/Seriedetalle.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -33,6 +34,12 @@ const router = createRouter({
       path: '/series',
       name: 'series',
       component: VistaSeries,
+    },
+
+    {
+      path: '/serieDetalle',
+      name: 'SerieDetalle',
+      component: SerieDetalle,
     },
     {
       path:'/admin',

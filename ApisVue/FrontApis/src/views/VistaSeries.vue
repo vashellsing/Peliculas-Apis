@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import BarraBusqueda from "@/components/BarraBusqueda.vue";
-import TarjetaPelicula from "@/components/TarjetaPelicula.vue";
+import TarjetaSerie from "@/components/TarjetaSerie.vue";
 
 // Simulamos los datos que en un futuro vendran de la api get peliculas api
 const seriesMock = ref([
@@ -29,14 +29,14 @@ const seriesMock = ref([
   {
     id: 4,
     titulo: "Dr. House",
-    calificacion: 9.2,
+    calificacion: 3.2,
     imagenUrl:
       "https://www.themoviedb.org/t/p/w600_and_h900_face/lW7MvZ4m49IUj2UrUu4z0xVVl81.jpg",
   },
   {
     id: 5,
     titulo: "Pulp Fiction",
-    calificacion: 8.9,
+    calificacion: 4.5,
     imagenUrl:
       "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Pulp+Fiction",
   },
@@ -74,10 +74,11 @@ const cambiarPagina = (nuevaPagina) => {
     <section class="seccion-cartelera">
       <h2 class="titulo-seccion">Series Destacadas</h2>
 
-      <div class="cuadricula-peliculas">
-        <TarjetaPelicula
+      <div class="cuadricula-series">
+        <TarjetaSerie
           v-for="serie in seriesPaginadas"
           :key="serie.id"
+          :id="serie.id"
           :titulo="serie.titulo"
           :calificacion="serie.calificacion"
           :imagenUrl="serie.imagenUrl"
@@ -130,7 +131,7 @@ const cambiarPagina = (nuevaPagina) => {
   margin-bottom: 2rem;
 }
 
-.cuadricula-peliculas {
+.cuadricula-series {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 2rem;
