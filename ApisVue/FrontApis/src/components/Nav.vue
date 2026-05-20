@@ -39,7 +39,7 @@
           style="text-decoration: none"
           >Iniciar sesion</RouterLink
         >
-        <!-- <RouterLink to="/acceso" class="btn-primario" style="text-decoration: none;">Registrarse</RouterLink> -->
+        <RouterLink to="/" class="btn-primario" style="text-decoration: none;">Cerrar Sesion</RouterLink>
       </div>
     </nav>
   </template>
