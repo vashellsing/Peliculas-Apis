@@ -344,19 +344,15 @@ def eliminar_favorito(id_pelicula):
 @require_api_key
 @require_jwt
 def analitica_favoritos():
-    # Ya no necesitamos recibir id_usuario por la URL
     import pandas as pd
-    import matplotlib.pyplot as plt
     from app_peliculas import mysql
+    from flask import jsonify, request
 
-    # Extraemos el ID del dueño del token
     id_usuario = request.current_user.get("id")
     nombre_usuario = request.current_user.get("nombre")
 
     try:
         cur = mysql.connection.cursor()
-
-        # Consultamos directamente los géneros de los favoritos del usuario
         query = """
             SELECT p.generoPelicula 
             FROM Favoritos f
@@ -373,33 +369,25 @@ def analitica_favoritos():
                 404,
             )
 
-        # ANALÍTICA CON PANDAS
-        # Convertimos la lista de tuplas en un DataFrame
+        # 🐼 ANALÍTICA CON PANDAS
         df = pd.DataFrame(datos, columns=["genero"])
-        conteo_generos = df["genero"].value_counts()
 
-        # GRAFICA CON MATPLOTLIB
-        plt.figure(figsize=(6, 6))
-        plt.pie(
-            conteo_generos,
-            labels=conteo_generos.index,
-            autopct="%1.1f%%",
-            startangle=90,
-            colors=plt.cm.Paired.colors,
-        )
-        plt.title(f"Perfil de Cinéfilo: {nombre_usuario}")
+        # value_counts() cuenta cuántas veces se repite cada género.
+        # .to_dict() lo transforma en un formato legible para JavaScript: {"Acción": 5, "Drama": 2}
+        conteo_dict = df["genero"].value_counts().to_dict()
 
-        # Guardamos o mostramos (plt.show() abre ventana en el servidor)
-        print(f"Generando gráfica para {nombre_usuario}...")
-        plt.show()
+        # Encontramos el género que más se repite (la Moda)
+        genero_dominante = df["genero"].mode()[0] if not df.empty else "Otros"
 
+        # Retornamos todo calculado al Frontend
         return (
             jsonify(
                 {
                     "id_usuario": id_usuario,
                     "nombre": nombre_usuario,
-                    "mensaje": "Análisis completado exitosamente.",
                     "total_favoritos": len(df),
+                    "conteo_generos": conteo_dict,
+                    "genero_dominante": genero_dominante,
                 }
             ),
             200,

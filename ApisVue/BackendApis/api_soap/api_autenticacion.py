@@ -58,19 +58,30 @@ class ServicioAutenticacion(ServiceBase):
         conexion = obtener_conexion()
         try:
             with conexion.cursor() as ejecutarConsulta:
-                # IMPORTANTE: Ahora pedimos el ID y el ROL
-                sql_buscar = "SELECT id_usuario, nombreUsuario, rol FROM Usuarios WHERE correoUsuario = %s AND contrasenaUsuario = %s"
+                # 1. ACTUALIZADO: Pedimos también el correoUsuario y el avatarUrl
+                sql_buscar = """
+                    SELECT id_usuario, nombreUsuario, correoUsuario, rol, avatarUrl, fecha_registro 
+                    FROM Usuarios 
+                    WHERE correoUsuario = %s AND contrasenaUsuario = %s
+                """
                 ejecutarConsulta.execute(sql_buscar, (correoUsuario, contrasenaUsuario))
                 usuario = ejecutarConsulta.fetchone()
 
                 if usuario:
-                    id_user, nombre, rol = usuario
+                    # 2. ACTUALIZADO: Desempaquetamos los 6 valores exactos que pedimos en el SELECT
+                    id_user, nombre, correo, rol, avatar, fecha_reg = usuario
+                    fecha_limpia = (
+                        fecha_reg.strftime("%Y-%m-%d") if fecha_reg else "Reciente"
+                    )  # Formateamos la fecha a un string legible
 
-                    # Generamos el JWT
+                    # 3. ACTUALIZADO: Metemos los datos nuevos al Payload del token
                     payload = {
                         "id": id_user,
                         "nombre": nombre,
+                        "correo": correo,  # <-- Ya viaja el correo
                         "rol": rol,
+                        "avatarUrl": avatar,  # <-- Ya viaja el avatar
+                        "miembroDesde": fecha_limpia,  # <-- Enviamos la fecha formateada
                         "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2),
                     }
 
@@ -78,10 +89,64 @@ class ServicioAutenticacion(ServiceBase):
                         payload, Config.JWT_SECRET_KEY, algorithm="HS256"
                     )
 
-                    # Devolvemos el token. El cliente SOAP deberá guardarlo.
                     return token
                 else:
                     return "Error: Credenciales incorrectas."
+        finally:
+            conexion.close()
+
+    @rpc(Unicode, Unicode, Unicode, Unicode, _returns=Unicode)
+    def actualizar_perfil(ctx, id_usuario, nombreUsuario, correoUsuario, avatarUrl):
+        conexion = obtener_conexion()
+        try:
+            with conexion.cursor() as ejecutarConsulta:
+                # 1. Actualizamos los datos del usuario en la BD
+                sql_actualizar = """
+                    UPDATE Usuarios 
+                    SET nombreUsuario = %s, correoUsuario = %s, avatarUrl = %s 
+                    WHERE id_usuario = %s
+                """
+                ejecutarConsulta.execute(
+                    sql_actualizar,
+                    (nombreUsuario, correoUsuario, avatarUrl, id_usuario),
+                )
+                conexion.commit()
+
+                # 2. Buscamos los datos actualizados junto con el rol y fecha para re-generar el token
+                sql_buscar = """
+                    SELECT id_usuario, nombreUsuario, correoUsuario, rol, avatarUrl, fecha_registro 
+                    FROM Usuarios 
+                    WHERE id_usuario = %s
+                """
+                ejecutarConsulta.execute(sql_buscar, (id_usuario,))
+                usuario = ejecutarConsulta.fetchone()
+
+                if usuario:
+                    id_user, nombre, correo, rol, avatar, fecha_reg = usuario
+                    fecha_limpia = (
+                        fecha_reg.strftime("%Y-%m-%d") if fecha_reg else "Reciente"
+                    )
+
+                    # 3. Creamos el nuevo Payload con los cambios hechos
+                    payload = {
+                        "id": id_user,
+                        "nombre": nombre,
+                        "correo": correo,
+                        "rol": rol,
+                        "avatarUrl": avatar,
+                        "miembroDesde": fecha_limpia,
+                        "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=2),
+                    }
+
+                    # 4. Encriptamos el nuevo token
+                    nuevo_token = jwt.encode(
+                        payload, Config.JWT_SECRET_KEY, algorithm="HS256"
+                    )
+                    return nuevo_token
+                else:
+                    return "Error: Usuario no encontrado tras la actualización."
+        except Exception as e:
+            return f"Error interno: {str(e)}"
         finally:
             conexion.close()
 
@@ -92,7 +157,6 @@ application = Application(
     in_protocol=Soap11(validator="lxml"),
     out_protocol=Soap11(),
 )
-
 
 
 class CORSMiddleware:
