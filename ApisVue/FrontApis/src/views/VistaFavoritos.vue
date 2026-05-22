@@ -1,60 +1,83 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
+import axios from "axios";
 import TarjetaPelicula from "../components/TarjetaPelicula.vue";
 
-// Simulamos los datos que en un futuro vendran de la api get peliculas api
-const seriesMock = ref([
-  {
-    id: 1,
-    titulo: "El Origen",
-    calificacion: 8.8,
-    imagenUrl:
-      "https://image.tmdb.org/t/p/original/9Pfuay9ztGmoS3bt8LW2mfgGjHs.jpg",
-  },
-  {
-    id: 2,
-    titulo: "Interestelar",
-    calificacion: 8.6,
-    imagenUrl:
-      "https://www.themoviedb.org/t/p/w600_and_h900_face/9cTfZWP5TfdnmAjiD6ZBXWIJ7O9.jpg",
-  },
-  {
-    id: 3,
-    titulo: "Matrix",
-    calificacion: 8.7,
-    imagenUrl:
-      "https://www.themoviedb.org/t/p/w600_and_h900_face/8rT9kG2EYkZpJmYCuTJNnPDEube.jpg",
-  },
-  {
-    id: 4,
-    titulo: "El Padrino",
-    calificacion: 9.2,
-    imagenUrl:
-      "https://www.themoviedb.org/t/p/w600_and_h900_face/ApiEfzSkrqS4m1L5a2GwWXzIiAs.jpg",
-  },
-  {
-    id: 5,
-    titulo: "Pulp Fiction",
-    calificacion: 8.9,
-    imagenUrl:
-      "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Pulp+Fiction",
-  },
-]);
+// Variables reactivas para el estado de la vista
+const peliculasFavoritas = ref([]);
+const cargando = ref(true);
+const errorMensaje = ref("");
 
+// ==========================================
+// FUNCIÓN PARA TRAER LOS FAVORITOS DE LA API
+// ==========================================
+const cargarFavoritos = async () => {
+  cargando.value = true;
+  errorMensaje.value = "";
 
-// LOGICA DE PAGINACIÓN
+  try {
+    const token = localStorage.getItem("token_cine");
 
-const paginaActual = ref(1);
-const elementosPorPagina = 4; 
+    if (!token) {
+      errorMensaje.value = "Debes iniciar sesión para ver tus favoritos.";
+      cargando.value = false;
+      return;
+    }
 
-const totalPaginas = computed(() => {
-  return Math.ceil(seriesMock.value.length / elementosPorPagina);
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123", // Usa tu API Key real
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    // Petición al backend (Ajusta el puerto 5001 si es necesario)
+    const respuesta = await axios.get(
+      "http://127.0.0.1:5000/favoritos/mio",
+      configuracion,
+    );
+
+    // Mapeamos los datos que ahora sí vienen directo de tu tabla Películas
+    peliculasFavoritas.value = respuesta.data.favoritos.map(fav => ({
+      id: fav.id_pelicula,
+      titulo: fav.titulo,
+      calificacion: fav.calificacion, // ¡Ya lee el promedio dinámico!
+      imagenUrl: fav.poster
+    }));
+  } catch (error) {
+    console.error("Error al cargar favoritos:", error);
+    if (error.response && error.response.status === 401) {
+      errorMensaje.value =
+        "Tu sesión ha expirado. Por favor, inicia sesión de nuevo.";
+    } else {
+      errorMensaje.value = "Hubo un problema al cargar tus favoritos.";
+    }
+  } finally {
+    cargando.value = false;
+  }
+};
+
+// Disparamos la carga cuando el componente se monta en pantalla
+onMounted(() => {
+  cargarFavoritos();
 });
 
-const seriesPaginadas = computed(() => {
+// ==========================================
+// LÓGICA DE PAGINACIÓN CORREGIDA
+// ==========================================
+const paginaActual = ref(1);
+const elementosPorPagina = 4;
+
+// Ahora apunta correctamente a peliculasFavoritas
+const totalPaginas = computed(() => {
+  return Math.ceil(peliculasFavoritas.value.length / elementosPorPagina);
+});
+
+// Ahora corta el arreglo de datos reales
+const PeliculasPaginadas = computed(() => {
   const inicio = (paginaActual.value - 1) * elementosPorPagina;
   const fin = inicio + elementosPorPagina;
-  return seriesMock.value.slice(inicio, fin);
+  return peliculasFavoritas.value.slice(inicio, fin);
 });
 
 const cambiarPagina = (nuevaPagina) => {
@@ -70,18 +93,33 @@ const cambiarPagina = (nuevaPagina) => {
     <section class="seccion-cartelera">
       <h2 class="titulo-seccion">Mis favoritos</h2>
 
-      <div class="cuadricula-peliculas">
+      <div v-if="cargando" class="mensaje-estado">
+        Cargando tus películas favoritas...
+      </div>
+
+      <div v-else-if="errorMensaje" class="mensaje-estado error">
+        {{ errorMensaje }}
+      </div>
+
+      <div v-else-if="peliculasFavoritas.length === 0" class="mensaje-estado">
+        Aún no tienes películas en tu lista de favoritos.
+      </div>
+
+      <div v-else class="cuadricula-peliculas">
         <TarjetaPelicula
-          v-for="serie in seriesPaginadas"
-          :key="serie.id"
-          :titulo="serie.titulo"
-          :calificacion="serie.calificacion"
-          :imagenUrl="serie.imagenUrl"
-          id="1"
+          v-for="pelicula in PeliculasPaginadas"
+          :key="pelicula.id"
+          :titulo="pelicula.titulo"
+          :calificacion="pelicula.calificacion"
+          :imagenUrl="pelicula.imagenUrl"
+          :id="pelicula.id"
         />
       </div>
-      <!-- PAGINACION -->
-      <div class="paginacion" v-if="totalPaginas > 1">
+
+      <div
+        class="paginacion"
+        v-if="totalPaginas > 1 && peliculasFavoritas.length > 0"
+      >
         <button
           class="btn-paginacion"
           :disabled="paginaActual === 1"
@@ -127,15 +165,27 @@ const cambiarPagina = (nuevaPagina) => {
   margin-bottom: 2rem;
 }
 
+.mensaje-estado {
+  text-align: center;
+  font-size: 1.2rem;
+  color: #666;
+  padding: 3rem;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.mensaje-estado.error {
+  color: #e50914;
+  background-color: #fde8e9;
+}
+
 .cuadricula-peliculas {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 2rem;
-  margin-bottom: 3rem; 
+  margin-bottom: 3rem;
 }
-
-
-/* ESTILOS DE RESPONSIVE PARA LA PAGINACION */
 
 .paginacion {
   display: flex;

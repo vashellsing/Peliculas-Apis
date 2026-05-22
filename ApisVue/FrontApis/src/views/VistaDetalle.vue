@@ -9,19 +9,22 @@ const pelicula = ref(null);
 const cargando = ref(true);
 const error = ref(null);
 
-// Variables para el Modal del Trailer
+const textoModalMensaje = ref("");
+const tipoModalMensaje = ref("exito"); // 'exito' o 'error'
 const mostrarModal = ref(false);
+const mostrarModalMensaje = ref(false);
 
-const funcionesDisponibles = ref([
-  {
-    id_cartelera: 1,
-    nombreCine: "Cine Colombia",
-    ciudadCine: "Popayán",
-    direccionCine: "C.C. Campanario",
-    fecha_hora: "2026-05-20 a las 18:30",
-    idioma: "Doblada al Espanol",
-  },
-]);
+const abrirModalMensaje = (texto, tipo = "exito") => {
+  textoModalMensaje.value = texto;
+  tipoModalMensaje.value = tipo;
+  mostrarModalMensaje.value = true;
+};
+
+const cerrarModalMensaje = () => {
+  mostrarModalMensaje.value = false;
+};
+
+const funcionesDisponibles = ref([]);
 
 // Convertimos el link para que funcione a embed
 const trailerEmbedUrl = computed(() => {
@@ -55,6 +58,80 @@ const cargarDetalles = async () => {
   }
 };
 
+// --- VARIABLES PARA FAVORITOS ---
+const esFavorito = ref(false);
+const procesandoFavorito = ref(false);
+
+// --- FUNCIONES DE FAVORITOS ---
+const verificarSiEsFavorito = async () => {
+  const token = localStorage.getItem("token_cine");
+  if (!token) return;
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+    // Traemos la lista actual de favoritos
+    const respuesta = await axios.get(
+      "http://127.0.0.1:5000/favoritos/mio",
+      configuracion,
+    );
+    const favoritosUsuario = respuesta.data.favoritos || [];
+    const idActual = Number(route.params.id);
+
+    // Verificamos si la película actual ya existe en su lista
+    const yaEsta = favoritosUsuario.some((fav) => fav.id_pelicula === idActual);
+    if (yaEsta) {
+      esFavorito.value = true;
+    }
+  } catch (err) {
+    console.error("Error verificando favoritos:", err);
+  }
+};
+
+const agregarAFavoritos = async () => {
+  const token = localStorage.getItem("token_cine");
+  if (!token) {
+    alert("Debes iniciar sesión para añadir películas a favoritos.");
+    return;
+  }
+
+  procesandoFavorito.value = true;
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    // Ajusta el endpoint "/favoritos" si tu backend lo llama distinto para hacer POST
+    const payload = { id_pelicula: Number(route.params.id) };
+    await axios.post("http://127.0.0.1:5000/favoritos", payload, configuracion);
+
+    esFavorito.value = true; // Cambiamos el estado visual
+  } catch (err) {
+    console.error("Error al añadir a favoritos:", err);
+    // Si el backend tira error 400 porque ya estaba agregada, lo manejamos limpio
+    if (
+      err.response &&
+      (err.response.status === 400 || err.response.status === 409)
+    ) {
+      esFavorito.value = true;
+    } else {
+      alert(
+        err.response?.data?.error || "Hubo un problema al añadir a favoritos.",
+      );
+    }
+  } finally {
+    procesandoFavorito.value = false;
+  }
+};
+
 // Abre el modal en lugar de salir de la vista
 const abrirTrailer = () => {
   if (pelicula.value.trailer) {
@@ -70,6 +147,30 @@ const cerrarModal = () => {
 };
 // Aqui estaran los comentariso cuando se conecte el api
 const comentarios = ref([]);
+
+//////////////////Cargar cartelera:
+
+const cargarCartelera = async () => {
+  try {
+    const configuracion = {
+      headers: { "x-api-key": "mi_super_api_key_fija_123" },
+    };
+    const idUrl = route.params.id;
+
+    // Llamamos al puerto 5002 de la cartelera
+    const respuesta = await axios.get(
+      `http://127.0.0.1:5002/cartelera/pelicula/${idUrl}`,
+      configuracion,
+    );
+
+    // Asignamos la respuesta a nuestra variable reactiva
+    funcionesDisponibles.value = respuesta.data.cartelera;
+  } catch (err) {
+    console.error("Error al cargar la cartelera:", err);
+    // Si la película no tiene funciones, aseguramos que el arreglo quede vacío
+    funcionesDisponibles.value = [];
+  }
+};
 
 ////////// COMENTARIOS
 
@@ -116,6 +217,60 @@ const obtenerUsuarioDeToken = () => {
     } catch (e) {
       console.error("Error al decodificar token", e);
     }
+  }
+};
+
+const alternarFavorito = async () => {
+  const token = localStorage.getItem("token_cine");
+  if (!token) {
+    abrirModalMensaje(
+      "Debes iniciar sesión para interactuar con tus favoritos.",
+      "error",
+    );
+    return;
+  }
+
+  procesandoFavorito.value = true;
+  const id_pelicula = Number(route.params.id);
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    if (esFavorito.value) {
+      // Si YA ES favorito, enviamos un DELETE al backend
+      await axios.delete(
+        `http://127.0.0.1:5000/favoritos/${id_pelicula}`,
+        configuracion,
+      );
+      esFavorito.value = false;
+      abrirModalMensaje(
+        "La película fue eliminada de tu lista de favoritos.",
+        "exito",
+      );
+    } else {
+      // Si NO ES favorito, enviamos un POST al backend
+      await axios.post(
+        "http://127.0.0.1:5000/favoritos",
+        { id_pelicula },
+        configuracion,
+      );
+      esFavorito.value = true;
+      abrirModalMensaje("¡Película añadida a favoritos exitosamente!", "exito");
+    }
+  } catch (err) {
+    console.error("Error al modificar favoritos:", err);
+    abrirModalMensaje(
+      err.response?.data?.error ||
+        "Hubo un problema de conexión con el servidor.",
+      "error",
+    );
+  } finally {
+    procesandoFavorito.value = false;
   }
 };
 
@@ -261,7 +416,9 @@ const mostrarEstrellas = (calificacion) => {
 // No olvides ejecutar obtenerUsuarioDeToken en el onMounted:
 onMounted(() => {
   cargarDetalles();
+  verificarSiEsFavorito();
   cargarComentarios();
+  cargarCartelera();
   obtenerUsuarioDeToken(); // Agregamos esto
 });
 </script>
@@ -310,9 +467,23 @@ onMounted(() => {
               <button @click="abrirTrailer" class="btn-primario">
                 <span>▶</span> Ver Tráiler
               </button>
-              <RouterLink to="/favoritos" class="btn-secundario"
-                ><span>❤️</span> Añadir a Favoritos</RouterLink
+              <button
+                @click="alternarFavorito"
+                class="btn-secundario btn-favorito"
+                :class="{ 'favorito-activo': esFavorito }"
+                :disabled="procesandoFavorito"
               >
+                <span>{{ esFavorito ? "❤️" : "🤍" }}</span>
+                <span class="texto-btn-fav">
+                  {{
+                    procesandoFavorito
+                      ? "Procesando..."
+                      : esFavorito
+                        ? "En tus Favoritos"
+                        : "Añadir a Favoritos"
+                  }}
+                </span>
+              </button>
               <div class="calificacion">
                 <span class="estrella">★</span>
                 {{ Number(pelicula.calificacion).toFixed(1) }} / 5.0
@@ -552,6 +723,24 @@ onMounted(() => {
           <button class="btn-primario btn-peligro" @click="ejecutarEliminacion">
             Sí, eliminar
           </button>
+        </div>
+      </div>
+      <div
+        v-if="mostrarModalMensaje"
+        class="modal-overlay"
+        @click.self="cerrarModalMensaje"
+      >
+        <div class="modal-confirmacion" :class="tipoModalMensaje">
+          <h3 v-if="tipoModalMensaje === 'exito'">¡Operación Exitosa!</h3>
+          <h3 v-else>Ha ocurrido un error</h3>
+
+          <p>{{ textoModalMensaje }}</p>
+
+          <div class="acciones-modal">
+            <button class="btn-primario" @click="cerrarModalMensaje">
+              Entendido
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1097,5 +1286,40 @@ button:hover {
   color: #f5c518; /* Amarillo clásico de cine */
   font-size: 1.1rem;
   letter-spacing: 2px; /* Un poco de espacio entre estrellas */
+}
+
+/* --- ESTILOS PARA EL BOTON DE FAVORITOS (TOGGLE) --- */
+.btn-favorito {
+  transition: all 0.3s ease;
+  min-width: 220px; /* Evita que el botón cambie de tamaño bruscamente al cambiar el texto */
+  justify-content: center;
+}
+
+.btn-favorito.favorito-activo {
+  background-color: #fef2f2;
+  border-color: #fca5a5;
+  color: #e50914;
+}
+
+/* Efecto Hover: Al pasar el mouse si ya es favorito, muestra la intención de eliminar */
+.btn-favorito.favorito-activo:hover {
+  background-color: #fee2e2;
+  border-color: #ef4444;
+}
+
+.btn-favorito.favorito-activo:hover .texto-btn-fav::after {
+  content: " (Quitar)";
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.btn-favorito:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* MODAL DE ERROR (Variante de colores) */
+.modal-confirmacion.error h3 {
+  color: #e50914;
 }
 </style>

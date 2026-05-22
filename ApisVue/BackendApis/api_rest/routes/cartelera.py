@@ -16,16 +16,14 @@ def obtener_cartelera():
     try:
         cur = mysql.connection.cursor()
         # Usamos JOIN para traer el título de la película y el nombre del cine
-        cur.execute(
-            """
+        cur.execute("""
             SELECT c.id_cartelera, p.titulo, cin.nombreCine, cin.ciudadCine, 
                    c.fecha_horaCartelera, c.idioma_proyeccionCartelera 
             FROM Carteleras c
             INNER JOIN Peliculas p ON c.id_peliculaCartelera = p.id_pelicula
             INNER JOIN Cines cin ON c.id_cineCartelera = cin.id_cine
             ORDER BY c.fecha_horaCartelera ASC
-        """
-        )
+        """)
 
         datos = cur.fetchall()
         cur.close()
@@ -40,6 +38,54 @@ def obtener_cartelera():
                     "ciudad": fila[3],
                     "fecha_hora": fila[4].strftime("%Y-%m-%d %H:%M:%S"),
                     "idioma": fila[5],
+                }
+            )
+
+        return jsonify({"cartelera": funciones}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# BUSCAR FUNCIONES POR PELÍCULA (GET)
+# ==========================================
+@cartelera_bp.route("/cartelera/pelicula/<int:id_pelicula>", methods=["GET"])
+@require_api_key
+def buscar_por_pelicula(id_pelicula):
+    from app_cartelera import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        # Asegúrate de que 'direccionCine' exista en tu tabla Cines. Si se llama distinto, cámbialo aquí.
+        cur.execute(
+            """
+            SELECT c.id_cartelera, p.titulo, cin.nombreCine, cin.ciudadCine, cin.direccionCine,
+                   c.fecha_horaCartelera, c.idioma_proyeccionCartelera 
+            FROM Carteleras c
+            INNER JOIN Peliculas p ON c.id_peliculaCartelera = p.id_pelicula
+            INNER JOIN Cines cin ON c.id_cineCartelera = cin.id_cine
+            WHERE c.id_peliculaCartelera = %s
+            ORDER BY c.fecha_horaCartelera ASC
+            """,
+            (id_pelicula,),
+        )
+
+        datos = cur.fetchall()
+        cur.close()
+
+        funciones = []
+        for fila in datos:
+            funciones.append(
+                {
+                    "id_cartelera": fila[0],
+                    "pelicula": fila[1],
+                    "nombreCine": fila[2],
+                    "ciudadCine": fila[3],
+                    "direccionCine": fila[4],
+                    "fecha_hora": fila[5].strftime(
+                        "%Y-%m-%d %H:%M"
+                    ),  # Le quité los segundos para que se vea mejor en pantalla
+                    "idioma": fila[6],
                 }
             )
 
@@ -150,7 +196,10 @@ def actualizar_funcion(id_cartelera):
 
         # Validamos si realmente se actualizó algo
         if cur.rowcount == 0:
-            return jsonify({"error": "No se realizo ningún cambio para actualizarla "}), 404
+            return (
+                jsonify({"error": "No se realizo ningún cambio para actualizarla "}),
+                404,
+            )
 
         cur.close()
         return (

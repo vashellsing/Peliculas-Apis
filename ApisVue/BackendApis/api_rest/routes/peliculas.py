@@ -221,41 +221,49 @@ def crear_pelicula():
 
 
 # ---------------------------------------------------------------------------------------------------
-# -------------------AHORA LOS ENDPOINTS PARA FAVORITOS----------------------------------------------
+# ------------------- ENDPOINTS PARA FAVORITOS (CORREGIDO) ------------------------------------------
 # ---------------------------------------------------------------------------------------------------
 
 
-# Agregar a favoritos
-
-
-@peliculas_bp.route("/favorito/add/<int:id_pelicula>", methods=["POST"])
+# ==========================================
+# 1. AÑADIR A FAVORITOS
+# ==========================================
+@peliculas_bp.route("/favoritos", methods=["POST"])
 @require_api_key
 @require_jwt
-def agregar_favorito(id_pelicula):
+def agregar_favorito():
     from app_peliculas import mysql
 
-    # SEGURIDAD: El ID viene del Token
     id_usuario = request.current_user.get("id")
+    data = request.get_json()
+    id_pelicula = data.get("id_pelicula")
 
     try:
         cur = mysql.connection.cursor()
+        # Insertar ignorando si ya existe para evitar errores SQL
         cur.execute(
-            "INSERT INTO Favoritos (id_usuarioFavorito, id_peliculaFavorito) VALUES (%s, %s)",
+            """
+            INSERT IGNORE INTO Favoritos (id_usuarioFavorito, id_peliculaFavorito) 
+            VALUES (%s, %s)
+            """,
             (id_usuario, id_pelicula),
         )
         mysql.connection.commit()
         cur.close()
-        return jsonify({"mensaje": "Agregada a TUS favoritos"}), 201
+        return jsonify({"mensaje": "Añadido a favoritos"}), 201
     except Exception as e:
-        if "Duplicate entry" in str(e):
-            return jsonify({"error": "Ya está en tus favoritos"}), 409
         return jsonify({"error": str(e)}), 500
 
 
-# Mostrar favoritos de un usuario
-@peliculas_bp.route(
-    "/favoritos/mio", methods=["GET"]
-)  # Cambiado de /usuario/<id> a /mio
+# ==========================================
+# 2. MOSTRAR FAVORITOS DE UN USUARIO
+# ==========================================
+
+
+# ==========================================
+# 2. MOSTRAR FAVORITOS DE UN USUARIO (CON CALIFICACIÓN REAL)
+# ==========================================
+@peliculas_bp.route("/favoritos/mio", methods=["GET"])
 @require_api_key
 @require_jwt
 def obtener_favoritos():
@@ -265,13 +273,23 @@ def obtener_favoritos():
 
     try:
         cur = mysql.connection.cursor()
+        # Hacemos un LEFT JOIN con la tabla Resenas (del puerto 5002) para promediar las calificaciones.
+        # Si la película no tiene reseñas aún, IFNULL le asignará 0.0 por defecto.
         cur.execute(
             """
-            SELECT p.id_pelicula, p.titulo, p.generoPelicula, f.fecha_agregado 
-            FROM Favoritos f
-            JOIN Peliculas p ON f.id_peliculaFavorito = p.id_pelicula
+            SELECT 
+                p.id_pelicula, 
+                p.titulo, 
+                p.generoPelicula, 
+                p.poster, 
+                f.fecha_agregado,
+                IFNULL(ROUND(AVG(r.calificacionComentario), 1), 0.0) AS promedio
+            FROM favoritos f
+            JOIN peliculas p ON f.id_peliculaFavorito = p.id_pelicula
+            LEFT JOIN webpeliculasDB.comentarios r ON p.id_pelicula = r.id_peliculaComentario
             WHERE f.id_usuarioFavorito = %s
-        """,
+            GROUP BY p.id_pelicula, p.titulo, p.generoPelicula, p.poster, f.fecha_agregado
+            """,
             (id_usuario,),
         )
         datos = cur.fetchall()
@@ -282,7 +300,11 @@ def obtener_favoritos():
                 "id_pelicula": f[0],
                 "titulo": f[1],
                 "genero": f[2],
-                "agregado_el": str(f[3]),
+                "poster": f[3],
+                "agregado_el": str(f[4]),
+                "calificacion": float(
+                    f[5]
+                ),  # ¡Aquí ya viaja el promedio real de la BD!
             }
             for f in datos
         ]
@@ -291,8 +313,10 @@ def obtener_favoritos():
         return jsonify({"error": str(e)}), 500
 
 
-# Eliminar de favoritos
-@peliculas_bp.route("/favorito/borrar/<int:id_pelicula>", methods=["DELETE"])
+# ==========================================
+# 3. ELIMINAR DE FAVORITOS
+# ==========================================
+@peliculas_bp.route("/favoritos/<int:id_pelicula>", methods=["DELETE"])
 @require_api_key
 @require_jwt
 def eliminar_favorito(id_pelicula):
@@ -307,8 +331,6 @@ def eliminar_favorito(id_pelicula):
             (id_usuario, id_pelicula),
         )
         mysql.connection.commit()
-        if cur.rowcount == 0:
-            return jsonify({"error": "No estaba en favoritos"}), 404
         cur.close()
         return jsonify({"mensaje": "Eliminado de favoritos"}), 200
     except Exception as e:
