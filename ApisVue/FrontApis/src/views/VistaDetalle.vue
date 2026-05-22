@@ -5,14 +5,12 @@ import axios from "axios";
 
 const route = useRoute();
 
-
 const pelicula = ref(null);
 const cargando = ref(true);
 const error = ref(null);
 
 // Variables para el Modal del Trailer
 const mostrarModal = ref(false);
-
 
 const funcionesDisponibles = ref([
   {
@@ -22,7 +20,7 @@ const funcionesDisponibles = ref([
     direccionCine: "C.C. Campanario",
     fecha_hora: "2026-05-20 a las 18:30",
     idioma: "Doblada al Espanol",
-  }
+  },
 ]);
 
 // Convertimos el link para que funcione a embed
@@ -70,27 +68,201 @@ const abrirTrailer = () => {
 const cerrarModal = () => {
   mostrarModal.value = false;
 };
+// Aqui estaran los comentariso cuando se conecte el api
+const comentarios = ref([]);
 
-const comentarios = ref([
-  {
-    id: 1,
-    usuario: "Cinefilo99",
-    titulo: "Una montaña rusa de emociones",
-    texto:
-      "Lloré, reí y grité en el cine. El manejo de la nostalgia es perfecto.",
-    fecha: "15 Dic 2021",
-  },
-  {
-    id: 2,
-    usuario: "MarvelFan",
-    titulo: "Puro fanservice, pero del bueno",
-    texto: "Logra integrar todos los elementos clásicos sin perder el enfoque.",
-    fecha: "16 Dic 2021",
-  },
-]);
+////////// COMENTARIOS
 
+const cargarComentarios = async () => {
+  try {
+    const configuracion = {
+      headers: { "x-api-key": "mi_super_api_key_fija_123" },
+    };
+    const idUrl = route.params.id;
+
+    // Llamamos al puerto 5003
+    const respuesta = await axios.get(
+      `http://127.0.0.1:5003/resenas/${idUrl}`,
+      configuracion,
+    );
+    // Asignamos la respuesta a la variable reactiva
+    comentarios.value = respuesta.data.comentarios;
+  } catch (err) {
+    console.error("Error al cargar los comentarios:", err);
+  }
+};
+
+const nuevoComentario = ref({
+  titulo: "",
+  comentario: "",
+  calificacion: 5,
+});
+const mensajeFormulario = ref({ texto: "", tipo: "" }); // Para mostrar éxito o error
+const enviandoComentario = ref(false);
+
+// --- NUEVAS VARIABLES PARA LA UI Y LA EDICIÓN ---
+const mostrarFormulario = ref(false);
+const editandoId = ref(null); // Guardará el ID de la reseña si estamos editando
+const usuarioActualId = ref(null);
+
+// Función para extraer el ID del usuario desde el JWT
+const obtenerUsuarioDeToken = () => {
+  const token = localStorage.getItem("token_cine");
+  if (token) {
+    try {
+      // El payload del JWT es la segunda parte separada por punto
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      usuarioActualId.value = payload.id; // Asegúrate de que el JWT traiga 'id'
+    } catch (e) {
+      console.error("Error al decodificar token", e);
+    }
+  }
+};
+
+const alternarFormulario = () => {
+  mostrarFormulario.value = !mostrarFormulario.value;
+  if (!mostrarFormulario.value) {
+    limpiarFormulario(); // Si lo cierra, limpiamos todo
+  }
+};
+
+const limpiarFormulario = () => {
+  nuevoComentario.value = { titulo: "", comentario: "", calificacion: 5 };
+  editandoId.value = null;
+  mensajeFormulario.value = { texto: "", tipo: "" };
+};
+
+const prepararEdicion = (comentario) => {
+  nuevoComentario.value = {
+    titulo: comentario.titulo,
+    comentario: comentario.texto,
+    calificacion: comentario.calificacion,
+  };
+  editandoId.value = comentario.id;
+  mostrarFormulario.value = true;
+  window.scrollTo({
+    top: document.querySelector(".formulario-comentario")?.offsetTop,
+    behavior: "smooth",
+  });
+};
+
+// --- NUEVAS VARIABLES PARA EL MODAL DE ELIMINACIÓN ---
+const mostrarModalEliminar = ref(false);
+const comentarioAEliminar = ref(null);
+
+// 1. Función para abrir el modal y guardar qué vamos a borrar
+const confirmarEliminacion = (id_comentario) => {
+  comentarioAEliminar.value = id_comentario;
+  mostrarModalEliminar.value = true;
+};
+
+// 2. Función para cerrar el modal sin hacer nada
+const cerrarModalEliminar = () => {
+  mostrarModalEliminar.value = false;
+  comentarioAEliminar.value = null;
+};
+
+// 3. Función que realmente va al backend a borrar
+const ejecutarEliminacion = async () => {
+  if (!comentarioAEliminar.value) return;
+
+  const token = localStorage.getItem("token_cine");
+  try {
+    const config = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    await axios.delete(
+      `http://127.0.0.1:5003/resenas/${comentarioAEliminar.value}`,
+      config,
+    );
+    await cargarComentarios(); // Recargamos la lista
+    cerrarModalEliminar(); // Cerramos el modal al terminar con éxito
+  } catch (err) {
+    console.error("Error eliminando comentario", err);
+    alert(err.response?.data?.error || "No se pudo eliminar el comentario");
+  }
+};
+
+// --- NUEVO: Función para enviar el comentario ---
+// --- FUNCIÓN ACTUALIZADA: ENVIAR O EDITAR RESEÑA ---
+const enviarResena = async () => {
+  mensajeFormulario.value = { texto: "", tipo: "" };
+  const token = localStorage.getItem("token_cine");
+
+  if (!token) {
+    mensajeFormulario.value = {
+      texto: "Debes iniciar sesión para dejar una reseña.",
+      tipo: "error",
+    };
+    return;
+  }
+
+  enviandoComentario.value = true;
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    const payload = {
+      id_pelicula: Number(route.params.id),
+      titulo: nuevoComentario.value.titulo,
+      comentario: nuevoComentario.value.comentario,
+      calificacion: nuevoComentario.value.calificacion,
+    };
+
+    if (editandoId.value) {
+      // Si hay un ID guardado, significa que ESTAMOS EDITANDO (PUT)
+      await axios.put(
+        `http://127.0.0.1:5003/resenas/${editandoId.value}`,
+        payload,
+        configuracion,
+      );
+      mensajeFormulario.value = {
+        texto: "¡Comentario actualizado con éxito!",
+        tipo: "exito",
+      };
+    } else {
+      // Si no hay ID, ESTAMOS CREANDO UNO NUEVO (POST)
+      await axios.post("http://127.0.0.1:5003/resenas", payload, configuracion);
+      mensajeFormulario.value = {
+        texto: "¡Comentario publicado con éxito!",
+        tipo: "exito",
+      };
+    }
+
+    limpiarFormulario();
+    mostrarFormulario.value = false; // Ocultamos el formulario al terminar
+    await cargarComentarios();
+  } catch (err) {
+    console.error(err);
+    const mensajeError =
+      err.response?.data?.error || "Ocurrió un error al enviar tu reseña.";
+    mensajeFormulario.value = { texto: mensajeError, tipo: "error" };
+  } finally {
+    enviandoComentario.value = false;
+  }
+};
+
+// --- NUEVO: Función para dibujar las estrellas ---
+const mostrarEstrellas = (calificacion) => {
+  const puntos = Number(calificacion) || 0;
+  // Repite la estrella llena 'puntos' veces y la vacía el resto hasta llegar a 5
+  return "★".repeat(puntos) + "☆".repeat(5 - puntos);
+};
+
+// No olvides ejecutar obtenerUsuarioDeToken en el onMounted:
 onMounted(() => {
   cargarDetalles();
+  cargarComentarios();
+  obtenerUsuarioDeToken(); // Agregamos esto
 });
 </script>
 
@@ -142,7 +314,8 @@ onMounted(() => {
                 ><span>❤️</span> Añadir a Favoritos</RouterLink
               >
               <div class="calificacion">
-                <span class="estrella">★</span> 4.5 / 5.0
+                <span class="estrella">★</span>
+                {{ Number(pelicula.calificacion).toFixed(1) }} / 5.0
               </div>
             </div>
           </div>
@@ -183,7 +356,12 @@ onMounted(() => {
                 </div>
               </div>
 
-              <a class="btn-boletos" href="https://www.cinecolombia.com/" target="_blank">Ir al cine</a>
+              <a
+                class="btn-boletos"
+                href="https://www.cinecolombia.com/"
+                target="_blank"
+                >Ir al cine</a
+              >
             </div>
           </div>
 
@@ -227,6 +405,72 @@ onMounted(() => {
           <h2 class="titulo-seccion text-center">
             Comentarios de la Comunidad
           </h2>
+
+          <div class="acciones-cabecera-comentarios">
+            <button @click="alternarFormulario" class="btn-primario">
+              {{ mostrarFormulario ? "❌ Cancelar" : "✍️ Agregar comentario" }}
+            </button>
+          </div>
+
+          <div v-if="mostrarFormulario" class="formulario-comentario">
+            <h3>{{ editandoId ? "Editar tu reseña" : "Deja tu reseña" }}</h3>
+
+            <div
+              v-if="mensajeFormulario.texto"
+              :class="['alerta', mensajeFormulario.tipo]"
+            >
+              {{ mensajeFormulario.texto }}
+            </div>
+
+            <form @submit.prevent="enviarResena">
+              <div class="grupo-input">
+                <label>Calificación:</label>
+                <select v-model="nuevoComentario.calificacion" required>
+                  <option value="5">⭐⭐⭐⭐⭐ (5) ¡Excelente!</option>
+                  <option value="4">⭐⭐⭐⭐ (4) Muy buena</option>
+                  <option value="3">⭐⭐⭐ (3) Buena</option>
+                  <option value="2">⭐⭐ (2) Regular</option>
+                  <option value="1">⭐ (1) Mala</option>
+                </select>
+              </div>
+
+              <div class="grupo-input">
+                <label>Título de tu reseña:</label>
+                <input
+                  type="text"
+                  v-model="nuevoComentario.titulo"
+                  placeholder="Ej: Me encantó esta película"
+                  required
+                  maxlength="150"
+                />
+              </div>
+
+              <div class="grupo-input">
+                <label>Comentario:</label>
+                <textarea
+                  v-model="nuevoComentario.comentario"
+                  placeholder="¿Qué te pareció la película?..."
+                  rows="4"
+                  required
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                class="btn-primario btn-enviar"
+                :disabled="enviandoComentario"
+              >
+                {{
+                  enviandoComentario
+                    ? "Guardando..."
+                    : editandoId
+                      ? "Guardar Cambios"
+                      : "Publicar Reseña"
+                }}
+              </button>
+            </form>
+          </div>
+
           <div class="lista-comentarios">
             <div
               class="comentario-item"
@@ -234,14 +478,41 @@ onMounted(() => {
               :key="comentario.id"
             >
               <div class="cabecera-comentario">
-                <h4 class="titulo-comentario">{{ comentario.titulo }}</h4>
+                <div class="info-cabecera">
+                  <h4 class="titulo-comentario">{{ comentario.titulo }}</h4>
+                  <span
+                    class="estrellas-comentario"
+                    :title="'Calificación: ' + comentario.calificacion + '/5'"
+                  >
+                    {{ mostrarEstrellas(comentario.calificacion) }}
+                  </span>
+                </div>
                 <span class="fecha">{{ comentario.fecha }}</span>
               </div>
               <p class="texto-comentario">{{ comentario.texto }}</p>
+
               <div class="pie-comentario">
                 <span class="usuario"
                   >Por: <strong>@{{ comentario.usuario }}</strong></span
                 >
+
+                <div
+                  class="acciones-propias"
+                  v-if="usuarioActualId === comentario.id_usuario"
+                >
+                  <button
+                    class="btn-accion editar"
+                    @click="prepararEdicion(comentario)"
+                  >
+                    ✏️ Editar
+                  </button>
+                  <button
+                    class="btn-accion eliminar"
+                    @click="confirmarEliminacion(comentario.id)"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -263,11 +534,31 @@ onMounted(() => {
         </div>
       </div>
     </div>
+    <div
+      v-if="mostrarModalEliminar"
+      class="modal-overlay"
+      @click.self="cerrarModalEliminar"
+    >
+      <div class="modal-confirmacion">
+        <h3>¿Eliminar comentario?</h3>
+        <p>
+          Esta acción no se puede deshacer. ¿Estás seguro de que quieres borrar
+          tu reseña?
+        </p>
+        <div class="acciones-modal">
+          <button class="btn-secundario" @click="cerrarModalEliminar">
+            Cancelar
+          </button>
+          <button class="btn-primario btn-peligro" @click="ejecutarEliminacion">
+            Sí, eliminar
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-
 .vista-detalle {
   font-family: sans-serif;
   color: #333;
@@ -651,5 +942,160 @@ button:hover {
   left: 0;
   width: 100%;
   height: 100%;
+}
+
+/* ESTILOS PARA EL FORMULARIO DE COMENTARIOS */
+.formulario-comentario {
+  background-color: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 2rem;
+}
+.formulario-comentario h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+}
+.grupo-input {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+.grupo-input label {
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+  color: #333;
+  font-size: 0.9rem;
+}
+.grupo-input input,
+.grupo-input select,
+.grupo-input textarea {
+  padding: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+.btn-enviar {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+.alerta {
+  padding: 0.8rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  text-align: center;
+}
+.alerta.error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #f87171;
+}
+.alerta.exito {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #4ade80;
+}
+
+/* NUEVOS ESTILOS PARA ACCIONES DE COMENTARIOS */
+.acciones-cabecera-comentarios {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+.pie-comentario {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #f1f1f1;
+}
+.acciones-propias {
+  display: flex;
+  gap: 0.5rem;
+}
+.btn-accion {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+.btn-accion.editar {
+  color: #0ea5e9;
+  background-color: #e0f2fe;
+}
+.btn-accion.editar:hover {
+  background-color: #bae6fd;
+}
+.btn-accion.eliminar {
+  color: #e50914;
+  background-color: #fee2e2;
+}
+.btn-accion.eliminar:hover {
+  background-color: #fecaca;
+}
+
+/* ESTILOS PARA EL MODAL DE CONFIRMACIÓN */
+.modal-confirmacion {
+  background-color: white;
+  padding: 2.5rem 2rem;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  /* Aseguramos que quede por encima del overlay */
+  position: relative;
+  z-index: 1001;
+}
+
+.modal-confirmacion h3 {
+  margin-top: 0;
+  color: #1a1a1a;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.modal-confirmacion p {
+  color: #555;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+  font-size: 1rem;
+}
+
+.acciones-modal {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btn-peligro {
+  background-color: #e50914;
+}
+
+.btn-peligro:hover {
+  background-color: #b8070f;
+}
+
+/* ESTILOS PARA LAS ESTRELLAS EN LOS COMENTARIOS */
+.info-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.estrellas-comentario {
+  color: #f5c518; /* Amarillo clásico de cine */
+  font-size: 1.1rem;
+  letter-spacing: 2px; /* Un poco de espacio entre estrellas */
 }
 </style>

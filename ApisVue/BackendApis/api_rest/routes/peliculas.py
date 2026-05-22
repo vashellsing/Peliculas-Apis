@@ -6,8 +6,7 @@ import json
 peliculas_bp = Blueprint("peliculas_bp", __name__)
 
 
-# Traer TODAS las películas
-# Traer TODAS las películas
+# Traer TODAS las películas (Con promedio de calificación)
 @peliculas_bp.route("/peliculas", methods=["GET"])
 @require_api_key
 def obtener_peliculas():
@@ -15,11 +14,14 @@ def obtener_peliculas():
 
     try:
         cur = mysql.connection.cursor()
-        # ¡AÑADIMOS EL POSTER AL SELECT!
+        # AÑADIMOS EL LEFT JOIN PARA CALCULAR EL PROMEDIO DE ESTRELLAS
         cur.execute("""
-            SELECT id_pelicula, titulo, titulo_originalPelicula, sinopsis, 
-                   anio, actoresPelicula, generoPelicula, idiomaPelicula, poster 
-            FROM Peliculas
+            SELECT p.id_pelicula, p.titulo, p.titulo_originalPelicula, p.sinopsis, 
+                   p.anio, p.actoresPelicula, p.generoPelicula, p.idiomaPelicula, p.poster,
+                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion
+            FROM Peliculas p
+            LEFT JOIN Comentarios c ON p.id_pelicula = c.id_peliculaComentario
+            GROUP BY p.id_pelicula
             """)
         datos = cur.fetchall()
         cur.close()
@@ -36,7 +38,10 @@ def obtener_peliculas():
                     "actores": fila[5],
                     "genero": fila[6],
                     "idioma": fila[7],
-                    "poster": fila[8],  # <-- LO AÑADIMOS AL JSON
+                    "poster": fila[8],
+                    "calificacion": float(
+                        fila[9]
+                    ),  # <-- Agregamos la calificación al JSON
                 }
             )
 
@@ -45,31 +50,35 @@ def obtener_peliculas():
         return jsonify({"error": str(e)}), 500
 
 
-# Buscar UNA sola película por su ID
+# Buscar UNA sola película por su ID (Con promedio de calificación)
 @peliculas_bp.route("/peliculas/<int:id_pelicula>", methods=["GET"])
 @require_api_key
 def obtener_pelicula_por_id(id_pelicula):
     from app_peliculas import mysql
+    import json  # Ya lo tienes arriba en tu archivo, pero aseguramos
 
     try:
         cur = mysql.connection.cursor()
         cur.execute(
             """
-            SELECT id_pelicula, titulo, titulo_originalPelicula, sinopsis, 
-                   anio, actoresPelicula, generoPelicula, idiomaPelicula, 
-                   poster, lema, trailer 
-            FROM Peliculas
-            WHERE id_pelicula = %s
+            SELECT p.id_pelicula, p.titulo, p.titulo_originalPelicula, p.sinopsis, 
+                   p.anio, p.actoresPelicula, p.generoPelicula, p.idiomaPelicula, 
+                   p.poster, p.lema, p.trailer,
+                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion
+            FROM Peliculas p
+            LEFT JOIN Comentarios c ON p.id_pelicula = c.id_peliculaComentario
+            WHERE p.id_pelicula = %s
+            GROUP BY p.id_pelicula
             """,
             (id_pelicula,),
         )
-        fila = cur.fetchone()  # fetchone() porque solo esperamos UNA película
+        fila = cur.fetchone()
+        cur.close()
         cur.close()
 
         if not fila:
             return jsonify({"error": "Película no encontrada"}), 404
 
-    
         actores_lista = []
         if fila[5]:
             try:
@@ -83,87 +92,18 @@ def obtener_pelicula_por_id(id_pelicula):
             "titulo_original": fila[2],
             "sinopsis": fila[3],
             "anio": fila[4],
-            "actores": actores_lista, 
+            "actores": actores_lista,
             "genero": fila[6],
             "idioma": fila[7],
             "poster": fila[8],
             "lema": fila[9],
             "trailer": fila[10],
+            "calificacion": float(fila[11]),  # <-- Promedio extraído de la posición 11
         }
 
         return jsonify({"pelicula": pelicula}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# Buscar películas por coincidencia parcial
-# ==========================================
-# ENDPOINTS DE BUSQUEDA Usando Query ?q=
-# ==========================================
-
-
-# Buscar películas por TÍTULO
-@peliculas_bp.route("/peliculas/buscar", methods=["GET"])
-@require_api_key
-def buscar_por_titulo():
-    from app_peliculas import mysql
-
-    titulo_buscado = request.args.get("q")
-
-    if not titulo_buscado:
-        return (
-            jsonify(
-                {
-                    "error": "Debes enviar un término de búsqueda. Ejemplo: /peliculas/buscar?q=shrek"
-                }
-            ),
-            400,
-        )
-
-    try:
-        cur = mysql.connection.cursor()
-        # AÑADIMOS EL CAMPO 'poster' AL SELECT
-        cur.execute(
-            """
-            SELECT id_pelicula, titulo, titulo_originalPelicula, sinopsis, 
-                   anio, actoresPelicula, generoPelicula, idiomaPelicula, poster 
-            FROM Peliculas 
-            WHERE titulo LIKE %s
-            """,
-            (f"%{titulo_buscado}%",),
-        )
-
-        datos = cur.fetchall()
-        cur.close()
-
-        peliculas = []
-        for fila in datos:
-            peliculas.append(
-                {
-                    "id": fila[0],
-                    "titulo": fila[1],
-                    "titulo_original": fila[2],
-                    "sinopsis": fila[3],
-                    "anio": fila[4],
-                    "actores": fila[5],
-                    "genero": fila[6],
-                    "idioma": fila[7],
-                    "poster": fila[8],  # <-- AQUÍ ESTÁ EL PÓSTER
-                }
-            )
-
-        if not peliculas:
-            return (
-                jsonify({"mensaje": "No se encontraron películas con ese título"}),
-                404,
-            )
-
-        return jsonify({"peliculas": peliculas}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-# Buscar películas por CATEGORÍA
 
 
 # Buscar películas por CATEGORÍA
@@ -212,7 +152,7 @@ def buscar_por_genero():
                     "actores": fila[5],
                     "genero": fila[6],
                     "idioma": fila[7],
-                    "poster": fila[8], 
+                    "poster": fila[8],
                 }
             )
 
@@ -454,6 +394,7 @@ def analitica_favoritos():
 
 # Endpoint para mostrar el póster de una película aleatoriamente filtrando los nulls
 # En routes/peliculas.py — agrega esta ruta
+
 
 @peliculas_bp.route("/peliculas/poster-aleatorio", methods=["GET"])
 @require_api_key

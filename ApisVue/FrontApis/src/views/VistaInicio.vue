@@ -94,7 +94,7 @@ watch(
             :key="pelicula.id"
             :id="pelicula.id"
             :titulo="pelicula.titulo"
-            :calificacion="4.5"
+            :calificacion="pelicula.calificacion"
             :imagenUrl="pelicula.poster"
           />
         </div>
