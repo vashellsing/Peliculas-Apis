@@ -1,106 +1,101 @@
 <script setup>
-import BarraBusqueda from "@/components/BarraBusqueda.vue";
-import { ref } from "vue";
+import { ref, onMounted, computed } from "vue";
+import { useRoute } from "vue-router";
+import axios from "axios";
 
-// json futuro de la api
-const serie = ref({
-  titulo: "The Boys",
-  lema: "Nunca conozcas a tus héroes.",
-  sinopsis:
-    'En un mundo donde los superhéroes son celebridades corruptas controladas por una poderosa corporación, un grupo de vigilantes conocidos como "The Boys" decide enfrentarlos y revelar la verdad detrás de su falsa imagen.',
-  calificacion: 8.8,
-  idioma: "Inglés",
-  imagenUrl:
-    "https://www.themoviedb.org/t/p/w600_and_h900_face/5kgY14oisiHcJ4zq0Xgq1e97PHm.jpg",
+const route = useRoute();
+
+const serie = ref(null);
+const cargando = ref(true);
+const error = ref("");
+const mostrarModal = ref(false);
+
+const abrirTrailer = () => {
+  if (serie.value?.trailer) {
+    mostrarModal.value = true;
+  } else {
+    alert("Esta serie no tiene tráiler disponible.");
+  }
+};
+
+const cerrarModal = () => {
+  mostrarModal.value = false;
+};
+
+const trailerSerieEmbedUrl = computed(() => {
+  if (!serie.value || !serie.value.trailer) return "";
+
+  const urlParams = new URLSearchParams(new URL(serie.value.trailer).search);
+  const videoId = urlParams.get("v");
+
+  return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : "";
 });
 
-// Temporadas y episodios
-const temporadas = ref([
-  {
-    id: 1,
-    numero: 1,
-    titulo: "Temporada 1",
-    episodios: [
-      { numero: 1, titulo: "El nombre del juego", duracion: "62 min" },
-      { numero: 2, titulo: "Cherry", duracion: "55 min" },
-      { numero: 3, titulo: "Trío de cuerdas", duracion: "58 min" },
-      { numero: 4, titulo: "La gran cabalgata", duracion: "54 min" },
-      { numero: 5, titulo: "Buenas para el negocio", duracion: "51 min" },
-      { numero: 6, titulo: "La soga", duracion: "53 min" },
-      { numero: 7, titulo: "La bola de nieve", duracion: "57 min" },
-      { numero: 8, titulo: "La fuerza de voluntad", duracion: "60 min" },
-    ],
-  },
-  {
-    id: 2,
-    numero: 2,
-    titulo: "Temporada 2",
-    episodios: [
-      { numero: 1, titulo: "El que siembra vientos", duracion: "63 min" },
-      { numero: 2, titulo: "Verdad", duracion: "56 min" },
-      { numero: 3, titulo: "Sang Froid", duracion: "54 min" },
-      { numero: 4, titulo: "Vought Rising", duracion: "59 min" },
-      { numero: 5, titulo: "Necesidad de velocidad", duracion: "52 min" },
-      { numero: 6, titulo: "El espejo", duracion: "55 min" },
-      { numero: 7, titulo: "Nunca conozcas a tus héroes", duracion: "58 min" },
-      { numero: 8, titulo: "Lo que se rompe", duracion: "62 min" },
-    ],
-  },
-  {
-    id: 3,
-    numero: 3,
-    titulo: "Temporada 3",
-    episodios: [
-      { numero: 1, titulo: "Payback", duracion: "65 min" },
-      { numero: 2, titulo: "El primero en su clase", duracion: "57 min" },
-      { numero: 3, titulo: "Herogasm", duracion: "61 min" },
-      { numero: 4, titulo: "Hombre vs. héroe", duracion: "54 min" },
-      {
-        numero: 5,
-        titulo: "The Last Time to Look on This World of Lies",
-        duracion: "56 min",
-      },
-      { numero: 6, titulo: "Temporada de brujas", duracion: "58 min" },
-      {
-        numero: 7,
-        titulo: "Here Comes a Candle to Light You to Bed",
-        duracion: "60 min",
-      },
-      { numero: 8, titulo: "El arma más grande", duracion: "70 min" },
-    ],
-  },
-]);
+// Configuración de API
+const config = {
+  headers: { "x-api-key": "mi_super_api_key_fija_123" },
+};
 
-// Temporada actualmente expandida (null = todas cerradas)
+// Traer detalle real desde el backend
+const cargarSerie = async () => {
+  try {
+    cargando.value = true;
+    error.value = "";
+
+    const id = route.params.id;
+    const url = `http://127.0.0.1:5001/series/${id}`;
+
+    const respuesta = await axios.get(url, config);
+    serie.value = respuesta.data.serie;
+  } catch (err) {
+    console.error("Error al cargar el detalle de la serie:", err);
+    error.value =
+      err?.response?.data?.error || "No se pudo cargar el detalle de la serie.";
+  } finally {
+    cargando.value = false;
+  }
+};
+
+onMounted(() => {
+  cargarSerie();
+});
+
+// Normaliza temporadas/episodios para que el front no se rompa
+const temporadas = computed(() => {
+  const data = serie.value?.temporadas_info;
+
+  if (!Array.isArray(data)) return [];
+
+  return data.map((t, index) => ({
+    id: t.id ?? index + 1,
+    numero: t.numero ?? t.temporada ?? index + 1,
+    titulo: t.titulo ?? `Temporada ${t.numero ?? index + 1}`,
+    episodios: Array.isArray(t.episodios)
+      ? t.episodios.map((e, i) => ({
+          numero: e.numero ?? i + 1,
+          titulo: e.titulo ?? `Episodio ${i + 1}`,
+          duracion: e.duracion ?? "",
+        }))
+      : [],
+  }));
+});
+
+const totalEpisodios = computed(() =>
+  temporadas.value.reduce((acc, t) => acc + t.episodios.length, 0),
+);
+
+const actores = computed(() => {
+  return Array.isArray(serie.value?.actores) ? serie.value.actores : [];
+});
+
+// Temporada actualmente abierta
 const temporadaAbierta = ref(null);
 
 const toggleTemporada = (id) => {
   temporadaAbierta.value = temporadaAbierta.value === id ? null : id;
 };
 
-// los actores
-const actores = ref([
-  {
-    id: 1,
-    nombre: "Karl Urban",
-    personaje: "Billy Butcher",
-    foto: "https://media.themoviedb.org/t/p/w300_and_h450_face/6CkZLwEJxfqqcJHyeXegMAvOlPh.jpg",
-  },
-  {
-    id: 2,
-    nombre: "Jack Quaid",
-    personaje: "Hughie Campbell",
-    foto: "https://media.themoviedb.org/t/p/w300_and_h450_face/320qW5yEbxpmyxQ3evmClJbtKag.jpg",
-  },
-  {
-    id: 3,
-    nombre: "Antony Starr",
-    personaje: "Homelander",
-    foto: "https://media.themoviedb.org/t/p/w300_and_h450_face/b0T56GMrHM24hDDjJ4DNPJcEUp6.jpg",
-  },
-]);
-
-// Simulamos comentarios reales de usuarios
+// Comentarios de ejemplo
 const comentarios = ref([
   {
     id: 1,
@@ -132,137 +127,180 @@ const comentarios = ref([
 <template>
   <div class="vista-detalle">
     <div class="contenedor-contenido">
-      <!-- ── INFO PRINCIPAL ────────────────────────────────────── -->
-      <section class="info-principal">
-        <div class="contenedor-poster">
-          <img :src="serie.imagenUrl" :alt="serie.titulo" class="poster" />
-        </div>
+      <div v-if="cargando" class="estado">Cargando detalle de la serie...</div>
 
-        <div class="datos-pelicula">
-          <h1 class="titulo">{{ serie.titulo }}</h1>
-          <p class="subtitulo">{{ serie.lema }}</p>
+      <div v-else-if="error" class="estado error">
+        {{ error }}
+      </div>
 
-          <div class="sinopsis">
-            <h3>Sinopsis</h3>
-            <p>{{ serie.sinopsis }}</p>
+      <template v-else-if="serie">
+        <!-- INFO PRINCIPAL -->
+        <section class="info-principal">
+          <div class="contenedor-poster">
+            <img :src="serie.imagenUrl" :alt="serie.titulo" class="poster" />
           </div>
 
-          <!-- IDIOMA -->
-          <div class="idioma-badge">
-            <span class="idioma-etiqueta">Idioma original:</span>
-            <span class="idioma-valor">{{ serie.idioma }}</span>
-          </div>
+          <div class="datos-pelicula">
+            <h1 class="titulo">{{ serie.titulo }}</h1>
+            <p class="subtitulo">{{ serie.titulo_original || "" }}</p>
 
-          <div class="acciones-calificacion">
-            <a
-              class="btn-primario"
-              href="https://youtu.be/AD0qUhZpbfc"
-              target="_blank"
-              ><span>▶</span>Ver Tráiler</a
-            >
-            <div class="calificacion">
-              <span class="estrella">★</span> {{ serie.calificacion }} / 10.0
+            <div class="sinopsis">
+              <h3>Sinopsis</h3>
+              <p>{{ serie.sinopsis }}</p>
+            </div>
+
+            <div class="idioma-badge">
+              <span class="idioma-etiqueta">Idioma original:</span>
+              <span class="idioma-valor">{{ serie.idioma }}</span>
+            </div>
+
+            <div class="acciones-calificacion">
+              <button
+                v-if="serie.trailer"
+                class="btn-primario"
+                @click="abrirTrailer"
+              >
+                <span>▶</span> Ver Tráiler
+              </button>
+
+              <div class="calificacion">
+                <span class="estrella">★</span> {{ serie.calificacion }} / 10
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- ── TEMPORADAS Y EPISODIOS ────────────────────────────── -->
-      <section class="seccion-temporadas">
-        <h2 class="titulo-seccion">Temporadas y Episodios</h2>
+        <!-- TEMPORADAS Y EPISODIOS -->
+        <section class="seccion-temporadas">
+          <h2 class="titulo-seccion">Temporadas y Episodios</h2>
 
-        <div class="resumen-temporadas">
-          <span class="chip">{{ temporadas.length }} temporadas</span>
-          <span class="chip">
-            {{
-              temporadas.reduce((acc, t) => acc + t.episodios.length, 0)
-            }}
-            episodios en total
-          </span>
-        </div>
+          <div class="resumen-temporadas">
+            <span class="chip">{{ temporadas.length }} temporadas</span>
+            <span class="chip">{{ totalEpisodios }} episodios en total</span>
+          </div>
 
-        <div class="acordeon">
-          <div
-            v-for="temporada in temporadas"
-            :key="temporada.id"
-            class="acordeon-item"
-            :class="{ abierto: temporadaAbierta === temporada.id }"
-          >
-            <!-- Cabecera clickeable -->
-            <button
-              class="acordeon-cabecera"
-              @click="toggleTemporada(temporada.id)"
-            >
-              <div class="cabecera-izq">
-                <span class="num-temporada">T{{ temporada.numero }}</span>
-                <span class="nombre-temporada">{{ temporada.titulo }}</span>
-                <span class="badge-eps"
-                  >{{ temporada.episodios.length }} eps.</span
-                >
-              </div>
-              <span
-                class="icono-flecha"
-                :class="{ girado: temporadaAbierta === temporada.id }"
-              >
-                ›
-              </span>
-            </button>
+          <div v-if="temporadas.length === 0" class="estado pequeño">
+            Esta serie no tiene temporadas cargadas todavía.
+          </div>
 
-            <!-- Lista de episodios (desplegable) -->
+          <div v-else class="acordeon">
             <div
-              class="acordeon-cuerpo"
-              v-show="temporadaAbierta === temporada.id"
+              v-for="temporada in temporadas"
+              :key="temporada.id"
+              class="acordeon-item"
+              :class="{ abierto: temporadaAbierta === temporada.id }"
             >
-              <div
-                v-for="episodio in temporada.episodios"
-                :key="episodio.numero"
-                class="fila-episodio"
+              <button
+                class="acordeon-cabecera"
+                @click="toggleTemporada(temporada.id)"
               >
-                <span class="ep-numero">{{ episodio.numero }}</span>
-                <span class="ep-titulo">{{ episodio.titulo }}</span>
-                <span class="ep-duracion">{{ episodio.duracion }}</span>
+                <div class="cabecera-izq">
+                  <span class="num-temporada">T{{ temporada.numero }}</span>
+                  <span class="nombre-temporada">{{ temporada.titulo }}</span>
+                  <span class="badge-eps"
+                    >{{ temporada.episodios.length }} eps.</span
+                  >
+                </div>
+
+                <span
+                  class="icono-flecha"
+                  :class="{ girado: temporadaAbierta === temporada.id }"
+                >
+                  ›
+                </span>
+              </button>
+
+              <div
+                class="acordeon-cuerpo"
+                v-show="temporadaAbierta === temporada.id"
+              >
+                <div
+                  v-for="episodio in temporada.episodios"
+                  :key="episodio.numero"
+                  class="fila-episodio"
+                >
+                  <span class="ep-numero">{{ episodio.numero }}</span>
+                  <span class="ep-titulo">{{ episodio.titulo }}</span>
+                  <span class="ep-duracion">{{ episodio.duracion }}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- ── REPARTO ────────────────────────────────────────────── -->
-      <section class="seccion-reparto">
-        <h2 class="titulo-seccion">Reparto Principal</h2>
-        <div class="contenedor-columnas">
-          <div class="tarjeta-actor" v-for="actor in actores" :key="actor.id">
-            <img :src="actor.foto" :alt="actor.nombre" class="foto-actor" />
-            <div class="info-actor">
-              <span class="nombre">{{ actor.nombre }}</span>
-              <span class="personaje">{{ actor.personaje }}</span>
+        <!-- REPARTO -->
+        <section class="seccion-reparto">
+          <h2 class="titulo-seccion">Reparto Principal</h2>
+
+          <div v-if="actores.length === 0" class="estado pequeño">
+            No hay actores registrados para esta serie.
+          </div>
+
+          <div v-else class="contenedor-columnas">
+            <div
+              class="tarjeta-actor"
+              v-for="actor in actores"
+              :key="actor.id || actor.nombre"
+            >
+              <img
+                :src="
+                  actor.foto ||
+                  'https://via.placeholder.com/300x450?text=Sin+Foto'
+                "
+                :alt="actor.nombre"
+                class="foto-actor"
+              />
+              <div class="info-actor">
+                <span class="nombre">{{ actor.nombre }}</span>
+                <span class="personaje">{{ actor.personaje }}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <!-- ── COMENTARIOS ────────────────────────────────────────── -->
-      <section class="seccion-comentarios">
-        <h2 class="titulo-seccion text-center">Comentarios de la Comunidad</h2>
-        <div class="lista-comentarios">
-          <div
-            class="comentario-item"
-            v-for="comentario in comentarios"
-            :key="comentario.id"
-          >
-            <div class="cabecera-comentario">
-              <h4 class="titulo-comentario">{{ comentario.titulo }}</h4>
-              <span class="fecha">{{ comentario.fecha }}</span>
-            </div>
-            <p class="texto-comentario">{{ comentario.texto }}</p>
-            <div class="pie-comentario">
-              <span class="usuario"
-                >Por: <strong>@{{ comentario.usuario }}</strong></span
-              >
+        <!-- COMENTARIOS -->
+        <section class="seccion-comentarios">
+          <h2 class="titulo-seccion text-center">
+            Comentarios de la Comunidad
+          </h2>
+
+          <div class="lista-comentarios">
+            <div
+              class="comentario-item"
+              v-for="comentario in comentarios"
+              :key="comentario.id"
+            >
+              <div class="cabecera-comentario">
+                <h4 class="titulo-comentario">{{ comentario.titulo }}</h4>
+                <span class="fecha">{{ comentario.fecha }}</span>
+              </div>
+
+              <p class="texto-comentario">{{ comentario.texto }}</p>
+
+              <div class="pie-comentario">
+                <span class="usuario">
+                  Por: <strong>@{{ comentario.usuario }}</strong>
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </template>
+    </div>
+  </div>
+
+  <div v-if="mostrarModal" class="modal-overlay" @click.self="cerrarModal">
+    <div class="modal-contenido">
+      <button class="btn-cerrar" @click="cerrarModal">✖</button>
+
+      <div class="video-responsive">
+        <iframe
+          :src="trailerSerieEmbedUrl"
+          frameborder="0"
+          allow="autoplay; encrypted-media"
+          allowfullscreen
+        ></iframe>
+      </div>
     </div>
   </div>
 </template>
@@ -284,7 +322,7 @@ const comentarios = ref([
   border-radius: 8px;
 }
 
-/* ── INFO PRINCIPAL ─────────────────────────────────────────────── */
+/* INFO PRINCIPAL */
 .info-principal {
   display: flex;
   gap: 3rem;
@@ -575,7 +613,7 @@ button:hover {
   white-space: nowrap;
 }
 
-/* ── REPARTO ──────────────────────────────────────────────────────── */
+/* REPARTO */
 .seccion-reparto {
   margin-bottom: 3rem;
 }
@@ -614,7 +652,7 @@ button:hover {
   color: #777;
 }
 
-/* ── COMENTARIOS ──────────────────────────────────────────────────── */
+/*  COMENTARIOS  */
 .seccion-comentarios {
   max-width: 800px;
   margin: 0 auto;
@@ -663,7 +701,7 @@ button:hover {
   color: #666;
 }
 
-/* ── RESPONSIVE ───────────────────────────────────────────────────── */
+/* RESPONSIVE */
 @media (max-width: 680px) {
   .info-principal {
     flex-direction: column;
@@ -682,5 +720,50 @@ button:hover {
   .calificacion {
     margin-left: 0;
   }
+}
+/* -----El modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-contenido {
+  position: relative;
+  width: 90%;
+  max-width: 900px;
+  background-color: #000;
+  border-radius: 8px;
+  padding: 2.5rem 1rem 1rem;
+}
+
+.btn-cerrar {
+  position: absolute;
+  top: 5px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.8rem;
+  cursor: pointer;
+}
+
+.video-responsive {
+  position: relative;
+  padding-bottom: 56.25%;
+  height: 0;
+}
+
+.video-responsive iframe {
+  position: absolute;
+  width: 100%;
+  height: 100%;
 }
 </style>

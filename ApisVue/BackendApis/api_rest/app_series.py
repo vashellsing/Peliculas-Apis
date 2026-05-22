@@ -1,10 +1,12 @@
 from flask import Flask
 from flask_mysqldb import MySQL
+from flask_cors import CORS
 from config import Config
 
 # Inicializamos la aplicacion Flask
 app = Flask(__name__)
 
+CORS(app)
 # Cargamos la configuracion de la base de datos
 app.config.from_object(Config)
 
@@ -15,9 +17,10 @@ mysql = MySQL(app)
 # Importamos y registramos los Blueprints (Nuestras APIs)
 # -------------------------------
 from routes.series import series_bp
+
 app.register_blueprint(series_bp)
 
 # Encendemos el servidor
-if __name__ == '__main__':
+if __name__ == "__main__":
     print("Iniciando la API REST de Peliculas en el puerto 5001...")
     app.run(debug=True, port=5001)

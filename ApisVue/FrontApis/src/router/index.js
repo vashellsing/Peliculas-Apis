@@ -36,11 +36,11 @@ const router = createRouter({
       component: VistaSeries,
     },
 
-    {
-      path: '/serieDetalle',
-      name: 'SerieDetalle',
-      component: SerieDetalle,
-    },
+  {
+  path: '/serieDetalle/:id',
+  name: 'serieDetalle',
+  component: SerieDetalle,
+},
     {
       path:'/admin',
       name: 'admin',
