@@ -5,65 +5,58 @@ import axios from "axios";
 
 const route = useRoute();
 
-const serie = ref(null);
-const cargando = ref(true);
-const error = ref("");
-const mostrarModal = ref(false);
-
-const abrirTrailer = () => {
-  if (serie.value?.trailer) {
-    mostrarModal.value = true;
-  } else {
-    alert("Esta serie no tiene tráiler disponible.");
-  }
-};
-
-const cerrarModal = () => {
-  mostrarModal.value = false;
-};
-
-const trailerSerieEmbedUrl = computed(() => {
-  if (!serie.value || !serie.value.trailer) return "";
-
-  const urlParams = new URLSearchParams(new URL(serie.value.trailer).search);
-  const videoId = urlParams.get("v");
-
-  return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : "";
-});
-
-// Configuración de API
+// ==========================================
+// CONFIGURACIÓN GLOBAL
+// ==========================================
 const config = {
   headers: { "x-api-key": "mi_super_api_key_fija_123" },
 };
 
-// Traer detalle real desde el backend
-const cargarSerie = async () => {
-  try {
-    cargando.value = true;
-    error.value = "";
+// ==========================================
+// ESTADO: DETALLE DE LA SERIE
+// ==========================================
+const serie = ref(null);
+const cargando = ref(true);
+const error = ref("");
+const mostrarModal = ref(false);
+const temporadaAbierta = ref(null);
 
-    const id = route.params.id;
-    const url = `http://127.0.0.1:5001/series/${id}`;
+// ==========================================
+// ESTADO: RESEÑAS Y FORMULARIO
+// ==========================================
+const comentarios = ref([]);
+const mostrarFormulario = ref(false);
+const editandoId = ref(null);
+const enviandoComentario = ref(false);
+const mensajeFormulario = ref({ texto: "", tipo: "" });
 
-    const respuesta = await axios.get(url, config);
-    serie.value = respuesta.data.serie;
-  } catch (err) {
-    console.error("Error al cargar el detalle de la serie:", err);
-    error.value =
-      err?.response?.data?.error || "No se pudo cargar el detalle de la serie.";
-  } finally {
-    cargando.value = false;
-  }
-};
-
-onMounted(() => {
-  cargarSerie();
+const nuevoComentario = ref({
+  titulo: "",
+  comentario: "",
+  calificacion: "5", // Por defecto 5 estrellas
 });
 
-// Normaliza temporadas/episodios para que el front no se rompa
+// Variables para control de usuario y eliminación
+const usuarioActualId = ref(null);
+const mostrarModalEliminar = ref(false);
+const comentarioAEliminar = ref(null);
+
+// ==========================================
+// PROPIEDADES COMPUTADAS
+// ==========================================
+const usuarioLogueado = computed(() => {
+  return !!localStorage.getItem("token_cine");
+});
+
+const trailerSerieEmbedUrl = computed(() => {
+  if (!serie.value || !serie.value.trailer) return "";
+  const urlParams = new URLSearchParams(new URL(serie.value.trailer).search);
+  const videoId = urlParams.get("v");
+  return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : "";
+});
+
 const temporadas = computed(() => {
   const data = serie.value?.temporadas_info;
-
   if (!Array.isArray(data)) return [];
 
   return data.map((t, index) => ({
@@ -88,40 +81,204 @@ const actores = computed(() => {
   return Array.isArray(serie.value?.actores) ? serie.value.actores : [];
 });
 
-// Temporada actualmente abierta
-const temporadaAbierta = ref(null);
+// ==========================================
+// MÉTODOS: INTERFAZ Y NAVEGACIÓN
+// ==========================================
+const abrirTrailer = () => {
+  if (serie.value?.trailer) {
+    mostrarModal.value = true;
+  } else {
+    alert("Esta serie no tiene tráiler disponible.");
+  }
+};
+
+const cerrarModal = () => {
+  mostrarModal.value = false;
+};
 
 const toggleTemporada = (id) => {
   temporadaAbierta.value = temporadaAbierta.value === id ? null : id;
 };
 
-// Comentarios de ejemplo
-const comentarios = ref([
-  {
-    id: 1,
-    usuario: "SerieAdicto",
-    titulo: "La serie de superhéroes más diferente",
-    texto:
-      "Una mezcla brutal de acción, humor negro y crítica social. Homelander da muchísimo miedo.",
-    fecha: "12 Jun 2024",
-  },
-  {
-    id: 2,
-    usuario: "FanPrime",
-    titulo: "Violenta pero increíble",
-    texto:
-      "Cada temporada mejora más. Los personajes están muy bien construidos y las escenas impactan bastante.",
-    fecha: "20 Jul 2024",
-  },
-  {
-    id: 3,
-    usuario: "CineSeries",
-    titulo: "Antony Starr se roba la pantalla",
-    texto:
-      "La actuación de Homelander es de las mejores que he visto en televisión. Tremendo villano.",
-    fecha: "05 Ago 2024",
-  },
-]);
+const alternarFormulario = () => {
+  mostrarFormulario.value = !mostrarFormulario.value;
+  if (!mostrarFormulario.value) {
+    resetFormulario();
+  }
+};
+
+const resetFormulario = () => {
+  nuevoComentario.value = { titulo: "", comentario: "", calificacion: "5" };
+  editandoId.value = null;
+  mensajeFormulario.value = { texto: "", tipo: "" };
+};
+
+// --- FUNCIONES PARA DIBUJAR ESTRELLAS Y USUARIO ---
+const mostrarEstrellas = (calificacion) => {
+  const puntos = Number(calificacion) || 0;
+  return "★".repeat(puntos) + "☆".repeat(5 - puntos);
+};
+
+const obtenerUsuarioDeToken = () => {
+  const token = localStorage.getItem("token_cine");
+  if (token) {
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      usuarioActualId.value = payload.id;
+    } catch (e) {
+      console.error("Error al decodificar token", e);
+    }
+  }
+};
+
+// --- MÉTODOS PARA EDITAR Y ELIMINAR ---
+const prepararEdicion = (comentario) => {
+  nuevoComentario.value = {
+    titulo: comentario.titulo,
+    comentario: comentario.texto || comentario.comentario, // Dependiendo de cómo lo devuelva tu API
+    calificacion: comentario.calificacion,
+  };
+  editandoId.value = comentario.id;
+  mostrarFormulario.value = true;
+};
+
+const confirmarEliminacion = (id_comentario) => {
+  comentarioAEliminar.value = id_comentario;
+  mostrarModalEliminar.value = true;
+};
+
+const cerrarModalEliminar = () => {
+  mostrarModalEliminar.value = false;
+  comentarioAEliminar.value = null;
+};
+
+const ejecutarEliminacion = async () => {
+  if (!comentarioAEliminar.value) return;
+
+  const token = localStorage.getItem("token_cine");
+  try {
+    const configHeaders = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    await axios.delete(
+      `http://127.0.0.1:5003/resenas/${comentarioAEliminar.value}`,
+      configHeaders,
+    );
+    await cargarResenas();
+    cerrarModalEliminar();
+  } catch (err) {
+    console.error("Error eliminando comentario", err);
+    alert(err.response?.data?.error || "No se pudo eliminar el comentario");
+  }
+};
+
+// ==========================================
+// MÉTODOS: LLAMADAS AL BACKEND (API)
+// ==========================================
+const cargarSerie = async () => {
+  try {
+    cargando.value = true;
+    error.value = "";
+    const id = route.params.id;
+    const url = `http://127.0.0.1:5001/series/${id}`;
+
+    const respuesta = await axios.get(url, config);
+    serie.value = respuesta.data.serie;
+  } catch (err) {
+    console.error("Error al cargar el detalle de la serie:", err);
+    error.value =
+      err?.response?.data?.error || "No se pudo cargar el detalle de la serie.";
+  } finally {
+    cargando.value = false;
+  }
+};
+
+const cargarResenas = async () => {
+  try {
+    const id = route.params.id;
+    const url = `http://127.0.0.1:5003/resenas/serie/${id}`;
+
+    const respuesta = await axios.get(url, config);
+    comentarios.value = respuesta.data.comentarios;
+  } catch (err) {
+    console.error("Error al cargar las reseñas de la serie:", err);
+    comentarios.value = [];
+  }
+};
+
+const enviarResena = async () => {
+  try {
+    enviandoComentario.value = true;
+    mensajeFormulario.value = { texto: "", tipo: "" };
+
+    const token = localStorage.getItem("token_cine");
+    if (!token) {
+      mensajeFormulario.value = {
+        texto: "Debes iniciar sesión para comentar.",
+        tipo: "error",
+      };
+      return;
+    }
+
+    const configAuth = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    const payload = {
+      id_serie: Number(route.params.id),
+      titulo: nuevoComentario.value.titulo,
+      comentario: nuevoComentario.value.comentario,
+      calificacion: parseInt(nuevoComentario.value.calificacion),
+    };
+
+    if (editandoId.value) {
+      // CORREGIDO A 5003
+      const urlPut = `http://127.0.0.1:5003/resenas/${editandoId.value}`;
+      await axios.put(urlPut, payload, configAuth);
+      mensajeFormulario.value = {
+        texto: "¡Reseña actualizada con éxito!",
+        tipo: "exito",
+      };
+    } else {
+      const urlPost = "http://127.0.0.1:5003/resenas";
+      await axios.post(urlPost, payload, configAuth);
+      mensajeFormulario.value = {
+        texto: "¡Comentario publicado con éxito!",
+        tipo: "exito",
+      };
+    }
+
+    cargarResenas();
+    setTimeout(() => {
+      alternarFormulario();
+    }, 1500);
+  } catch (err) {
+    console.error("Error al guardar el comentario:", err);
+    mensajeFormulario.value = {
+      texto:
+        err?.response?.data?.error || "Ocurrió un error al guardar tu reseña.",
+      tipo: "error",
+    };
+  } finally {
+    enviandoComentario.value = false;
+  }
+};
+
+// ==========================================
+// CICLO DE VIDA
+// ==========================================
+onMounted(() => {
+  cargarSerie();
+  cargarResenas();
+  obtenerUsuarioDeToken(); // NECESARIO para saber qué reseñas podemos borrar/editar
+});
 </script>
 
 <template>
@@ -264,27 +421,169 @@ const comentarios = ref([
             Comentarios de la Comunidad
           </h2>
 
-          <div class="lista-comentarios">
+          <div v-if="usuarioLogueado" class="acciones-cabecera-comentarios">
+            <button @click="alternarFormulario" class="btn-primario">
+              {{ mostrarFormulario ? "❌ Cancelar" : "✍️ Agregar comentario" }}
+            </button>
+          </div>
+
+          <div v-else class="estado pequeño">
+            Inicia sesión para dejar tu comentario sobre esta serie.
+          </div>
+
+          <div v-if="mostrarFormulario" class="formulario-comentario">
+            <h3>{{ editandoId ? "Editar tu reseña" : "Deja tu reseña" }}</h3>
+
             <div
-              class="comentario-item"
-              v-for="comentario in comentarios"
-              :key="comentario.id"
+              v-if="mensajeFormulario.texto"
+              :class="['alerta', mensajeFormulario.tipo]"
             >
-              <div class="cabecera-comentario">
-                <h4 class="titulo-comentario">{{ comentario.titulo }}</h4>
-                <span class="fecha">{{ comentario.fecha }}</span>
+              {{ mensajeFormulario.texto }}
+            </div>
+
+            <form @submit.prevent="enviarResena">
+              <div class="grupo-input">
+                <label>Calificación:</label>
+                <select v-model="nuevoComentario.calificacion" required>
+                  <option value="5">⭐⭐⭐⭐⭐ (5) ¡Excelente!</option>
+                  <option value="4">⭐⭐⭐⭐ (4) Muy buena</option>
+                  <option value="3">⭐⭐⭐ (3) Buena</option>
+                  <option value="2">⭐⭐ (2) Regular</option>
+                  <option value="1">⭐ (1) Mala</option>
+                </select>
               </div>
 
-              <p class="texto-comentario">{{ comentario.texto }}</p>
+              <div class="grupo-input">
+                <label>Título de tu reseña:</label>
+                <input
+                  type="text"
+                  v-model="nuevoComentario.titulo"
+                  placeholder="Ej: Me encantó esta serie"
+                  required
+                  maxlength="150"
+                />
+              </div>
+
+              <div class="grupo-input">
+                <label>Comentario:</label>
+                <textarea
+                  v-model="nuevoComentario.comentario"
+                  placeholder="¿Qué te pareció la serie?..."
+                  rows="4"
+                  required
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                class="btn-primario btn-enviar"
+                :disabled="enviandoComentario"
+              >
+                {{
+                  enviandoComentario
+                    ? "Guardando..."
+                    : editandoId
+                      ? "Guardar Cambios"
+                      : "Publicar Reseña"
+                }}
+              </button>
+            </form>
+          </div>
+          <div v-if="comentarios.length === 0" class="estado pequeño">
+            Aún no hay comentarios. ¡Sé el primero en opinar!
+          </div>
+
+          <div v-else class="lista-comentarios">
+            <div
+              v-for="comentario in comentarios"
+              :key="comentario.id || comentario.id_comentario"
+              class="comentario-item"
+            >
+              <div class="cabecera-comentario">
+                <h4 class="titulo-comentario">
+                  {{ comentario.titulo || "Sin título" }}
+                  <span
+                    style="font-size: 0.8rem; color: #999; font-weight: normal"
+                  >
+                    (ID: {{ comentario.id || comentario.id_comentario }})
+                  </span>
+                </h4>
+                <span class="fecha">
+                  {{
+                    comentario.fecha ||
+                    comentario.fecha_creacion ||
+                    comentario.creado_en ||
+                    "Reciente"
+                  }}
+                </span>
+              </div>
+
+              <div class="info-cabecera">
+                <div class="estrellas-comentario">
+                  {{
+                    mostrarEstrellas(
+                      comentario.calificacion || comentario.puntuacion,
+                    )
+                  }}
+                </div>
+              </div>
+
+              <p class="texto-comentario">
+                {{ comentario.comentario || comentario.texto }}
+              </p>
 
               <div class="pie-comentario">
                 <span class="usuario">
-                  Por: <strong>@{{ comentario.usuario }}</strong>
+                  Por: @{{
+                    comentario.nombre_usuario ||
+                    comentario.username ||
+                    comentario.usuario ||
+                    "Anónimo"
+                  }}
                 </span>
+
+                <div
+                  v-if="comentario.id_usuario === usuarioActualId"
+                  class="acciones-propias"
+                >
+                  <button
+                    @click="prepararEdicion(comentario)"
+                    class="btn-accion editar"
+                  >
+                    ✏️ Editar
+                  </button>
+                  <button
+                    @click="
+                      confirmarEliminacion(
+                        comentario.id || comentario.id_comentario,
+                      )
+                    "
+                    class="btn-accion eliminar"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </section>
+        <div v-if="mostrarModalEliminar" class="modal-overlay">
+          <div class="modal-confirmacion">
+            <h3>¿Eliminar reseña?</h3>
+            <p>
+              ¿Estás seguro de que deseas eliminar este comentario? Esta acción
+              no se puede deshacer.
+            </p>
+            <div class="acciones-modal">
+              <button @click="cerrarModalEliminar" class="btn-secundario">
+                Cancelar
+              </button>
+              <button @click="ejecutarEliminacion" class="btn-peligro">
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
       </template>
     </div>
   </div>
@@ -306,6 +605,9 @@ const comentarios = ref([
 </template>
 
 <style scoped>
+/* ==========================================================================
+   1. CONTENEDORES GLOBALES Y TIPOGRAFÍA
+   ========================================================================== */
 .vista-detalle {
   font-family: sans-serif;
   color: #333;
@@ -322,7 +624,101 @@ const comentarios = ref([
   border-radius: 8px;
 }
 
-/* INFO PRINCIPAL */
+.titulo-seccion {
+  font-size: 1.5rem;
+  margin-bottom: 1.2rem;
+  color: #1a1a1a;
+  border-left: 4px solid #e50914;
+  padding-left: 0.8rem;
+}
+
+.text-center {
+  text-align: center;
+  border: none;
+  padding: 0;
+}
+
+/* ==========================================================================
+   2. ELEMENTOS UI GLOBALES (Botones y Alertas)
+   ========================================================================== */
+button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: bold;
+  font-size: 1rem;
+  transition: transform 0.2s, background-color 0.2s;
+  cursor: pointer;
+}
+
+button:hover {
+  transform: translateY(-2px);
+}
+
+.btn-primario {
+  background-color: #e50914;
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.btn-primario:hover {
+  background-color: #b8070f;
+}
+
+.btn-secundario {
+  background-color: transparent;
+  color: #333;
+  padding: 0.8rem 1.5rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.btn-secundario:hover {
+  background-color: #f5f5f5;
+  border-color: #999;
+}
+
+.btn-peligro {
+  background-color: #e50914;
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-peligro:hover {
+  background-color: #b8070f;
+}
+
+.alerta {
+  padding: 0.8rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  text-align: center;
+}
+
+.alerta.exito {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #4ade80;
+}
+
+.alerta.error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #f87171;
+}
+
+/* ==========================================================================
+   3. CABECERA E INFO PRINCIPAL
+   ========================================================================== */
 .info-principal {
   display: flex;
   gap: 3rem;
@@ -353,6 +749,7 @@ const comentarios = ref([
   color: #1a1a1a;
   line-height: 1.1;
 }
+
 .subtitulo {
   font-size: 1.2rem;
   color: #666;
@@ -365,13 +762,13 @@ const comentarios = ref([
   font-size: 1.1rem;
   color: #4a4a4a;
 }
+
 .sinopsis p {
   color: #555;
   line-height: 1.6;
   margin-bottom: 1rem;
 }
 
-/* ── IDIOMA ─────────────────────────────────────────────────────── */
 .idioma-badge {
   display: inline-flex;
   align-items: center;
@@ -388,12 +785,12 @@ const comentarios = ref([
 .idioma-etiqueta {
   color: #777;
 }
+
 .idioma-valor {
   font-weight: bold;
   color: #333;
 }
 
-/* ── ACCIONES ────────────────────────────────────────────────────── */
 .acciones-calificacion {
   display: flex;
   align-items: center;
@@ -402,70 +799,20 @@ const comentarios = ref([
   flex-wrap: wrap;
 }
 
-button {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: bold;
-  font-size: 1rem;
-  transition:
-    transform 0.2s,
-    background-color 0.2s;
-  cursor: pointer;
-}
-button:hover {
-  transform: translateY(-2px);
-}
-
-.btn-primario {
-  background-color: #e50914;
-  color: white;
-  padding: 0.8rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  text-decoration: none;
-}
-.btn-primario:hover {
-  background-color: #b8070f;
-}
-
-.btn-secundario {
-  background-color: transparent;
-  color: #333;
-  padding: 0.8rem 1.5rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-}
-.btn-secundario:hover {
-  background-color: #f5f5f5;
-  border-color: #999;
-}
-
 .calificacion {
   margin-left: auto;
   font-size: 1.2rem;
   font-weight: bold;
   color: #333;
 }
+
 .estrella {
   color: #f5c518;
 }
 
-/* ── TITULO SECCIÓN ──────────────────────────────────────────────── */
-.titulo-seccion {
-  font-size: 1.5rem;
-  margin-bottom: 1.2rem;
-  color: #1a1a1a;
-  border-left: 4px solid #e50914;
-  padding-left: 0.8rem;
-}
-.text-center {
-  text-align: center;
-  border: none;
-  padding: 0;
-}
-
-/* ── TEMPORADAS ─────────────────────────────────────────────────── */
+/* ==========================================================================
+   4. SECCIÓN: TEMPORADAS Y EPISODIOS
+   ========================================================================== */
 .seccion-temporadas {
   margin-bottom: 3rem;
 }
@@ -499,9 +846,11 @@ button:hover {
   overflow: hidden;
   transition: box-shadow 0.2s;
 }
+
 .acordeon-item:hover {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
+
 .acordeon-item.abierto {
   border-color: #e50914;
 }
@@ -519,9 +868,11 @@ button:hover {
   transition: background-color 0.2s;
   transform: none !important; /* anula el hover global de button */
 }
+
 .acordeon-cabecera:hover {
   background-color: #f0f0f0;
 }
+
 .acordeon-item.abierto .acordeon-cabecera {
   background-color: #fff5f5;
 }
@@ -563,11 +914,11 @@ button:hover {
   transition: transform 0.25s ease;
   display: inline-block;
 }
+
 .icono-flecha.girado {
   transform: rotate(90deg);
 }
 
-/* Lista de episodios */
 .acordeon-cuerpo {
   border-top: 1px solid #eee;
   background-color: #fff;
@@ -581,9 +932,11 @@ button:hover {
   border-bottom: 1px solid #f5f5f5;
   transition: background-color 0.15s;
 }
+
 .fila-episodio:last-child {
   border-bottom: none;
 }
+
 .fila-episodio:hover {
   background-color: #fafafa;
 }
@@ -607,13 +960,16 @@ button:hover {
   font-size: 0.95rem;
   color: #333;
 }
+
 .ep-duracion {
   font-size: 0.85rem;
   color: #999;
   white-space: nowrap;
 }
 
-/* REPARTO */
+/* ==========================================================================
+   5. SECCIÓN: REPARTO
+   ========================================================================== */
 .seccion-reparto {
   margin-bottom: 3rem;
 }
@@ -639,20 +995,25 @@ button:hover {
   border-radius: 50%;
   object-fit: cover;
 }
+
 .info-actor {
   display: flex;
   flex-direction: column;
 }
+
 .nombre {
   font-weight: bold;
   color: #333;
 }
+
 .personaje {
   font-size: 0.85rem;
   color: #777;
 }
 
-/*  COMENTARIOS  */
+/* ==========================================================================
+   6. SECCIÓN: COMENTARIOS Y FORMULARIO
+   ========================================================================== */
 .seccion-comentarios {
   max-width: 800px;
   margin: 0 auto;
@@ -672,6 +1033,7 @@ button:hover {
   background-color: #fff;
   transition: box-shadow 0.2s;
 }
+
 .comentario-item:hover {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
@@ -682,46 +1044,142 @@ button:hover {
   align-items: center;
   margin-bottom: 0.8rem;
 }
+
 .titulo-comentario {
   margin: 0;
   font-size: 1.1rem;
   color: #1a1a1a;
 }
+
 .fecha {
   font-size: 0.85rem;
   color: #999;
 }
+
+.info-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.estrellas-comentario {
+  color: #f5c518;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  margin-bottom: 0.8rem;
+}
+
 .texto-comentario {
   color: #555;
   line-height: 1.5;
   margin-bottom: 1rem;
 }
+
+.pie-comentario {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #f1f1f1;
+}
+
 .usuario {
   font-size: 0.9rem;
   color: #666;
 }
 
-/* RESPONSIVE */
-@media (max-width: 680px) {
-  .info-principal {
-    flex-direction: column;
-    align-items: center;
-  }
-  .contenedor-poster {
-    flex: unset;
-    width: 200px;
-  }
-  .contenedor-columnas {
-    grid-template-columns: 1fr;
-  }
-  .acciones-calificacion {
-    justify-content: center;
-  }
-  .calificacion {
-    margin-left: 0;
-  }
+.acciones-cabecera-comentarios {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
 }
-/* -----El modal */
+
+.acciones-propias {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-accion {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.btn-accion.editar {
+  color: #0ea5e9;
+  background-color: #e0f2fe;
+}
+
+.btn-accion.editar:hover {
+  background-color: #bae6fd;
+}
+
+.btn-accion.eliminar {
+  color: #e50914;
+  background-color: #fee2e2;
+}
+
+.btn-accion.eliminar:hover {
+  background-color: #fecaca;
+}
+
+/* Formulario de comentarios */
+.formulario-comentario {
+  background-color: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 2rem;
+}
+
+.formulario-comentario h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+}
+
+.grupo-input {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.grupo-input label {
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.grupo-input input,
+.grupo-input select,
+.grupo-input textarea {
+  padding: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+.btn-enviar {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+/* ==========================================================================
+   7. MODALES (Tráiler y Confirmación)
+   ========================================================================== */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -741,7 +1199,8 @@ button:hover {
   max-width: 900px;
   background-color: #000;
   border-radius: 8px;
-  padding: 2.5rem 1rem 1rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  padding: 2.5rem 1rem 1rem 1rem;
 }
 
 .btn-cerrar {
@@ -753,17 +1212,64 @@ button:hover {
   color: white;
   font-size: 1.8rem;
   cursor: pointer;
+  padding: 0;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.btn-cerrar:hover {
+  color: #e50914;
+  transform: scale(1.1);
 }
 
 .video-responsive {
   position: relative;
   padding-bottom: 56.25%;
   height: 0;
+  overflow: hidden;
+  border-radius: 4px;
 }
 
 .video-responsive iframe {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
+}
+
+.modal-confirmacion {
+  background-color: white;
+  padding: 2.5rem 2rem;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  position: relative;
+  z-index: 1001;
+}
+
+.modal-confirmacion h3 {
+  margin-top: 0;
+  color: #1a1a1a;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.modal-confirmacion.error h3 {
+  color: #e50914;
+}
+
+.modal-confirmacion p {
+  color: #555;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+  font-size: 1rem;
+}
+
+.acciones-modal {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
 }
 </style>

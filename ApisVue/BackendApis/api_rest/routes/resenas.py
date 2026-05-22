@@ -5,8 +5,9 @@ from utils.auth import require_api_key, require_jwt, require_role
 resenas_bp = Blueprint("resenas_bp", __name__)
 
 
+
 # ==========================================
-# POST: DEJAR UN COMENTARIO / RESEÑA
+# POST: DEJAR UN COMENTARIO / RESEÑA (ACTUALIZADO PARA PELÍCULAS Y SERIES)
 # ==========================================
 @resenas_bp.route("/resenas", methods=["POST"])
 @require_api_key
@@ -19,42 +20,52 @@ def dejar_resena():
     usuario_id = request.current_user.get("id")
     usuario_rol = request.current_user.get("rol")
 
+    # Validamos que venga el contenido básico y al menos uno de los dos IDs
     if not datos or not all(
-        k in datos for k in ("id_pelicula", "titulo", "comentario", "calificacion")
+        k in datos for k in ("titulo", "comentario", "calificacion")
     ):
         return jsonify({"error": "Faltan datos obligatorios"}), 400
 
-    id_pelicula = datos["id_pelicula"]
+    if "id_pelicula" not in datos and "id_serie" not in datos:
+        return jsonify({"error": "Debe especificar id_pelicula o id_serie"}), 400
+
+    id_pelicula = datos.get("id_pelicula")
+    id_serie = datos.get("id_serie")
 
     try:
         cur = mysql.connection.cursor()
 
+        # LÓGICA DE NEGOCIO: Solo 1 reseña por usuario (si no es admin)
         if usuario_rol == "usuario":
-            query_check = """
-                SELECT id_peliculaComentario 
-                FROM Comentarios 
-                WHERE id_usuarioComentario = %s AND id_peliculaComentario = %s
-            """
-            cur.execute(query_check, (usuario_id, id_pelicula))
-            existe = cur.fetchone()
+            if id_pelicula:
+                cur.execute(
+                    "SELECT id_comentario FROM Comentarios WHERE id_usuarioComentario = %s AND id_peliculaComentario = %s",
+                    (usuario_id, id_pelicula),
+                )
+            else:
+                cur.execute(
+                    "SELECT id_comentario FROM Comentarios WHERE id_usuarioComentario = %s AND id_serieComentario = %s",
+                    (usuario_id, id_serie),
+                )
 
-            if existe:
+            if cur.fetchone():
                 cur.close()
                 return (
-                    jsonify({"error": "Solo puedes dejar una reseña por película"}),
+                    jsonify({"error": "Ya has dejado una reseña aquí anteriormente"}),
                     403,
                 )
 
-        # AÑADIDO: 'tituloComentario' en el INSERT
+        # INSERT: Usamos None para el campo que no se usa
         sql = """
             INSERT INTO Comentarios 
-            (id_peliculaComentario, id_usuarioComentario, calificacionComentario, tituloComentario, textoComentario)
-            VALUES (%s, %s, %s, %s, %s)
+            (id_peliculaComentario, id_serieComentario, id_usuarioComentario, calificacionComentario, tituloComentario, textoComentario)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """
         cur.execute(
             sql,
             (
                 id_pelicula,
+                id_serie,
                 usuario_id,
                 datos["calificacion"],
                 datos["titulo"],
@@ -67,8 +78,46 @@ def dejar_resena():
         return jsonify({"mensaje": "Comentario publicado con éxito"}), 201
 
     except Exception as e:
-        if "foreign key constraint fails" in str(e).lower():
-            return jsonify({"error": "La película no existe"}), 400
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# GET: OBTENER TODAS LAS RESEÑAS DE UNA SERIE
+# ==========================================
+@resenas_bp.route("/resenas/serie/<int:id_serie>", methods=["GET"])
+@require_api_key
+def obtener_resenas_serie(id_serie):
+    from app_peliculas import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        sql = """
+            SELECT c.id_comentario, c.id_usuarioComentario, u.nombreUsuario, 
+                   c.calificacionComentario, c.tituloComentario, c.textoComentario, c.fecha_creacion
+            FROM comentarios c
+            LEFT JOIN usuarios u ON c.id_usuarioComentario = u.id_usuario
+            WHERE c.id_serieComentario = %s
+            ORDER BY c.fecha_creacion DESC
+        """
+        cur.execute(sql, (id_serie,))
+        datos = cur.fetchall()
+        cur.close()
+
+        comentarios = [
+            {
+                "id": f[0],
+                "id_usuario": f[1],
+                "usuario": f[2] or f"Usuario #{f[1]}",
+                "calificacion": f[3],
+                "titulo": f[4],
+                "texto": f[5],
+                "fecha": f[6].strftime("%d %b %Y") if f[6] else "",
+            }
+            for f in datos
+        ]
+
+        return jsonify({"comentarios": comentarios}), 200
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
