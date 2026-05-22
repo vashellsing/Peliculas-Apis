@@ -301,7 +301,9 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* ESTILOS ORIGINALES */
+/* ==========================================
+   1. ESTRUCTURA PRINCIPAL
+   ========================================== */
 .vista-perfil {
   padding: 3rem 2rem;
   font-family: sans-serif;
@@ -312,6 +314,10 @@ onMounted(() => {
   max-width: 1000px;
   margin: 0 auto;
 }
+
+/* ==========================================
+   2. CABECERA Y DATOS DEL USUARIO
+   ========================================== */
 .cabecera-usuario {
   display: flex;
   align-items: flex-start;
@@ -352,7 +358,9 @@ onMounted(() => {
   color: #999;
 }
 
-/* NUEVOS ESTILOS PARA EDICION */
+/* ==========================================
+   3. MODO EDICIÓN (FORMULARIO Y BOTONES)
+   ========================================== */
 .btn-editar-perfil {
   margin-top: 1rem;
   background-color: #f0f0f0;
@@ -367,7 +375,6 @@ onMounted(() => {
 .btn-editar-perfil:hover {
   background-color: #e2e2e2;
 }
-
 .formulario-edicion {
   display: flex;
   flex-direction: column;
@@ -423,6 +430,9 @@ onMounted(() => {
   background: #333;
 }
 
+/* ==========================================
+   4. CAJA DE LLAMADO A LA ANALÍTICA
+   ========================================== */
 .caja-analitica {
   background-color: #1a1a1a;
   color: white;
@@ -463,6 +473,10 @@ onMounted(() => {
   color: #aaa;
   font-size: 0.9rem;
 }
+
+/* ==========================================
+   5. RESULTADOS Y GRÁFICA
+   ========================================== */
 .resultado-grafica {
   background-color: white;
   padding: 2rem;
@@ -507,6 +521,9 @@ onMounted(() => {
   background-color: #333;
 }
 
+/* ==========================================
+   6. ANIMACIONES
+   ========================================== */
 @keyframes aparecer {
   from {
     opacity: 0;
