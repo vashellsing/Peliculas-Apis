@@ -1,12 +1,12 @@
 <script setup>
 defineProps({
-  id: {             
+  id: {
     type: Number,
-    required: true
+    required: true,
   },
   titulo: {
     type: String,
-    default: 'Título Desconocido',
+    default: "Título Desconocido",
   },
   calificacion: {
     type: Number,
@@ -14,9 +14,9 @@ defineProps({
   },
   imagenUrl: {
     type: String,
-    default: 'https://via.placeholder.com/300x450?text=Sin+Portada',
+    default: "https://via.placeholder.com/300x450?text=Sin+Portada",
   },
-})
+});
 </script>
 
 <template>
@@ -28,7 +28,9 @@ defineProps({
 
     <div class="informacion">
       <h3 class="titulo">{{ titulo }}</h3>
-      <RouterLink :to="`/serieDetalle`" class="btn-detalles">Ver detalles</RouterLink>
+      <RouterLink :to="`/serieDetalle/${id}`" class="btn-detalles"
+        >Ver detalles</RouterLink
+      >
     </div>
   </article>
 </template>
@@ -38,14 +40,13 @@ defineProps({
 .tarjeta-serie {
   border: 1px solid #e0e0e0;
   border-radius: 8px;
-  overflow: hidden; 
+  overflow: hidden;
   background-color: #fff;
   display: flex;
   flex-direction: column;
   font-family: sans-serif;
-  transition: transform 0.2s ease; 
+  transition: transform 0.2s ease;
 }
-
 
 .tarjeta-serie:hover {
   transform: translateY(-5px);
@@ -55,7 +56,7 @@ defineProps({
 .contenedor-imagen {
   position: relative;
   width: 100%;
-  aspect-ratio: 2 / 3; 
+  aspect-ratio: 2 / 3;
   background-color: #ddd;
 }
 
@@ -81,7 +82,7 @@ defineProps({
   padding: 1.2rem;
   display: flex;
   flex-direction: column;
-  flex-grow: 1; 
+  flex-grow: 1;
   justify-content: space-between;
 }
 
@@ -93,21 +94,20 @@ defineProps({
 }
 
 .btn-detalles {
-  display: block; 
-  width: 100%; 
-  padding: 0.8rem; 
+  display: block;
+  width: 100%;
+  padding: 0.8rem;
   background-color: #4a4a4a;
   color: white;
-  text-decoration: none; 
-  text-align: center; 
+  text-decoration: none;
+  text-align: center;
   border-radius: 4px;
   font-weight: bold;
-  box-sizing: border-box; 
+  box-sizing: border-box;
   transition: background-color 0.2s;
 }
 
 .btn-detalles:hover {
   background-color: #333;
 }
-
 </style>

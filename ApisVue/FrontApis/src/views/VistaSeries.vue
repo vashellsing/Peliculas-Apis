@@ -1,63 +1,56 @@
 <script setup>
-import { ref, computed } from "vue";
-import BarraBusqueda from "@/components/BarraBusqueda.vue";
+import { ref, computed, onMounted } from "vue";
+import axios from "axios";
 import TarjetaSerie from "@/components/TarjetaSerie.vue";
 
-// Simulamos los datos que en un futuro vendran de la api get peliculas api
-const seriesMock = ref([
-  {
-    id: 1,
-    titulo: "The boys",
-    calificacion: 8.8,
-    imagenUrl:
-      "https://www.themoviedb.org/t/p/w600_and_h900_face/5kgY14oisiHcJ4zq0Xgq1e97PHm.jpg",
-  },
-  {
-    id: 2,
-    titulo: "Sobrenarutal",
-    calificacion: 8.6,
-    imagenUrl:
-      "https://www.themoviedb.org/t/p/w600_and_h900_face/58Qaj36FZDz54H36LsUI8mGiW9y.jpg",
-  },
-  {
-    id: 3,
-    titulo: "El mentalista",
-    calificacion: 8.7,
-    imagenUrl:
-      "https://www.themoviedb.org/t/p/w600_and_h900_face/snKUzvCl3kGv0RWBjEjnOXMGvdl.jpg",
-  },
-  {
-    id: 4,
-    titulo: "Dr. House",
-    calificacion: 3.2,
-    imagenUrl:
-      "https://www.themoviedb.org/t/p/w600_and_h900_face/lW7MvZ4m49IUj2UrUu4z0xVVl81.jpg",
-  },
-  {
-    id: 5,
-    titulo: "Pulp Fiction",
-    calificacion: 4.5,
-    imagenUrl:
-      "https://via.placeholder.com/300x450/1a1a1a/ffffff?text=Pulp+Fiction",
-  },
-]);
+// 1. Variables para los datos reales y el estado de carga
+const seriesBackend = ref([]);
+const cargando = ref(true);
 
-// PAGINACION
+// 2. FUNCIÓN MÁGICA: Conecta al backend
+const cargarSeries = async () => {
+  try {
+    // Configuración con tu API KEY
+    const config = {
+      headers: { "x-api-key": "mi_super_api_key_fija_123" },
+    };
 
+    // Llamamos al puerto 5001 que me confirmaste que funciona
+    const url = "http://127.0.0.1:5001/series";
+
+    const respuesta = await axios.get(url, config);
+
+    // Guardamos los datos que nos envía Flask
+    seriesBackend.value = respuesta.data.series;
+  } catch (error) {
+    console.error("Error al cargar las series:", error);
+  } finally {
+    // Ya terminó de cargar (sea éxito o error)
+    cargando.value = false;
+  }
+};
+
+// 3. Ejecutar la función apenas se abra la página
+onMounted(() => {
+  cargarSeries();
+});
+
+// ==========================================
+// LÓGICA DE PAGINACIÓN
+// ==========================================
 const paginaActual = ref(1);
-const elementosPorPagina = 4;
+const elementosPorPagina = 8; // Subí a 8 para que se vean dos filas completas
 
 const totalPaginas = computed(() => {
-  return Math.ceil(seriesMock.value.length / elementosPorPagina);
+  return Math.ceil(seriesBackend.value.length / elementosPorPagina);
 });
 
 const seriesPaginadas = computed(() => {
   const inicio = (paginaActual.value - 1) * elementosPorPagina;
   const fin = inicio + elementosPorPagina;
-  return seriesMock.value.slice(inicio, fin);
+  return seriesBackend.value.slice(inicio, fin);
 });
 
-// FunciOn para navegar entre pAginas
 const cambiarPagina = (nuevaPagina) => {
   if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas.value) {
     paginaActual.value = nuevaPagina;
@@ -71,45 +64,62 @@ const cambiarPagina = (nuevaPagina) => {
     <section class="seccion-cartelera">
       <h2 class="titulo-seccion">Series Destacadas</h2>
 
-      <div class="cuadricula-series">
-        <TarjetaSerie
-          v-for="serie in seriesPaginadas"
-          :key="serie.id"
-          :id="serie.id"
-          :titulo="serie.titulo"
-          :calificacion="serie.calificacion"
-          :imagenUrl="serie.imagenUrl"
-        />
+      <!-- FEEDBACK: Mientras está esperando al backend -->
+      <div v-if="cargando" class="estado-mensaje">
+        Cargando el catálogo de series... 🍿
       </div>
 
-      <div class="paginacion" v-if="totalPaginas > 1">
-        <button
-          class="btn-paginacion"
-          :disabled="paginaActual === 1"
-          @click="cambiarPagina(paginaActual - 1)"
-        >
-          &laquo; <span class="texto-btn">Anterior</span>
-        </button>
+      <!-- FEEDBACK: Si el backend respondió, pero la lista está vacía -->
+      <div
+        v-else-if="seriesBackend.length === 0"
+        class="estado-mensaje error-texto"
+      >
+        No se encontraron series en la base de datos.
+      </div>
 
-        <div class="numeros-pagina">
-          <button
-            v-for="numero in totalPaginas"
-            :key="numero"
-            class="btn-numero"
-            :class="{ activo: paginaActual === numero }"
-            @click="cambiarPagina(numero)"
-          >
-            {{ numero }}
-          </button>
+      <!-- LA CUADRÍCULA REAL: Si todo salió bien -->
+      <div v-else>
+        <div class="cuadricula-series">
+          <!-- OJO AQUÍ: Usamos seriesPaginadas, que viene del backend -->
+          <TarjetaSerie
+            v-for="serie in seriesPaginadas"
+            :key="serie.id"
+            :id="serie.id"
+            :titulo="serie.titulo"
+            :calificacion="4.5"
+            :imagenUrl="serie.imagenUrl"
+          />
         </div>
 
-        <button
-          class="btn-paginacion"
-          :disabled="paginaActual === totalPaginas"
-          @click="cambiarPagina(paginaActual + 1)"
-        >
-          <span class="texto-btn">Siguiente</span> &raquo;
-        </button>
+        <div class="paginacion" v-if="totalPaginas > 1">
+          <button
+            class="btn-paginacion"
+            :disabled="paginaActual === 1"
+            @click="cambiarPagina(paginaActual - 1)"
+          >
+            &laquo; <span class="texto-btn">Anterior</span>
+          </button>
+
+          <div class="numeros-pagina">
+            <button
+              v-for="numero in totalPaginas"
+              :key="numero"
+              class="btn-numero"
+              :class="{ activo: paginaActual === numero }"
+              @click="cambiarPagina(numero)"
+            >
+              {{ numero }}
+            </button>
+          </div>
+
+          <button
+            class="btn-paginacion"
+            :disabled="paginaActual === totalPaginas"
+            @click="cambiarPagina(paginaActual + 1)"
+          >
+            <span class="texto-btn">Siguiente</span> &raquo;
+          </button>
+        </div>
       </div>
     </section>
   </div>
@@ -135,8 +145,27 @@ const cambiarPagina = (nuevaPagina) => {
   margin-bottom: 3rem;
 }
 
-/* RESPONSIVE APGINACION        */
+/* ========================================== */
+/* ESTILOS DE FEEDBACK (NUEVO)                */
+/* ========================================== */
+.estado-mensaje {
+  text-align: center;
+  padding: 4rem;
+  font-size: 1.2rem;
+  color: #666;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  margin-bottom: 3rem;
+}
 
+.error-texto {
+  color: #e50914;
+  font-weight: bold;
+}
+
+/* ========================================== */
+/* ESTILOS DE PAGINACIÓN                      */
+/* ========================================== */
 .paginacion {
   display: flex;
   flex-wrap: wrap;
@@ -202,17 +231,14 @@ const cambiarPagina = (nuevaPagina) => {
   .paginacion {
     gap: 0.8rem;
   }
-
   .btn-paginacion {
     padding: 0.5rem 0.8rem;
   }
-
   .btn-numero {
     padding: 0.4rem 0.6rem;
     min-width: 35px;
     font-size: 0.9rem;
   }
-
   .texto-btn {
     display: none;
   }
