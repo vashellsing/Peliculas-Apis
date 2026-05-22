@@ -86,7 +86,7 @@ const cambiarPagina = (nuevaPagina) => {
             :key="serie.id"
             :id="serie.id"
             :titulo="serie.titulo"
-            :calificacion="4.5"
+            :calificacion="serie.calificacion"
             :imagenUrl="serie.imagenUrl"
           />
         </div>

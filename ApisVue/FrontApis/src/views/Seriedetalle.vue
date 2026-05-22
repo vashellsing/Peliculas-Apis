@@ -33,7 +33,7 @@ const mensajeFormulario = ref({ texto: "", tipo: "" });
 const nuevoComentario = ref({
   titulo: "",
   comentario: "",
-  calificacion: "5", // Por defecto 5 estrellas
+  calificacion: "serie.calificacion", // Por defecto 5 estrellas
 });
 
 // Variables para control de usuario y eliminación
@@ -321,7 +321,7 @@ onMounted(() => {
               </button>
 
               <div class="calificacion">
-                <span class="estrella">★</span> {{ serie.calificacion }} / 10
+                <span class="estrella">★</span> {{ serie.calificacion }} / 5
               </div>
             </div>
           </div>
@@ -500,14 +500,23 @@ onMounted(() => {
               class="comentario-item"
             >
               <div class="cabecera-comentario">
-                <h4 class="titulo-comentario">
-                  {{ comentario.titulo || "Sin título" }}
+                <div class="info-cabecera">
+                  <h4 class="titulo-comentario">
+                    {{ comentario.titulo || "Sin título" }}
+                  </h4>
+
                   <span
-                    style="font-size: 0.8rem; color: #999; font-weight: normal"
+                    class="estrellas-comentario"
+                    :title="`Calificación: ${comentario.calificacion || comentario.puntuacion || 'N/A'}/5`"
                   >
-                    (ID: {{ comentario.id || comentario.id_comentario }})
+                    {{
+                      mostrarEstrellas(
+                        comentario.calificacion || comentario.puntuacion,
+                      )
+                    }}
                   </span>
-                </h4>
+                </div>
+
                 <span class="fecha">
                   {{
                     comentario.fecha ||
@@ -516,16 +525,6 @@ onMounted(() => {
                     "Reciente"
                   }}
                 </span>
-              </div>
-
-              <div class="info-cabecera">
-                <div class="estrellas-comentario">
-                  {{
-                    mostrarEstrellas(
-                      comentario.calificacion || comentario.puntuacion,
-                    )
-                  }}
-                </div>
               </div>
 
               <p class="texto-comentario">
@@ -647,7 +646,9 @@ button {
   gap: 0.5rem;
   font-weight: bold;
   font-size: 1rem;
-  transition: transform 0.2s, background-color 0.2s;
+  transition:
+    transform 0.2s,
+    background-color 0.2s;
   cursor: pointer;
 }
 
@@ -1213,7 +1214,9 @@ button:hover {
   font-size: 1.8rem;
   cursor: pointer;
   padding: 0;
-  transition: transform 0.2s, color 0.2s;
+  transition:
+    transform 0.2s,
+    color 0.2s;
 }
 
 .btn-cerrar:hover {
