@@ -1,19 +1,23 @@
 <script setup>
+// ==========================================
+// HERRAMIENTAS NECESARIAS
+// ==========================================
 import { ref, onMounted, computed } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
 
+// Para saber la direccion web en la que estamos y sacar el ID de la serie
 const route = useRoute();
 
 // ==========================================
-// CONFIGURACIÓN GLOBAL
+// CONFIGURACION PARA CONECTARNOS AL SERVIDOR
 // ==========================================
 const config = {
   headers: { "x-api-key": "mi_super_api_key_fija_123" },
 };
 
 // ==========================================
-// ESTADO: DETALLE DE LA SERIE
+// CAJAS PARA GUARDAR LOS DATOS DE LA SERIE
 // ==========================================
 const serie = ref(null);
 const cargando = ref(true);
@@ -22,7 +26,7 @@ const mostrarModal = ref(false);
 const temporadaAbierta = ref(null);
 
 // ==========================================
-// ESTADO: RESEÑAS Y FORMULARIO
+// CAJAS PARA COMENTARIOS Y FORMULARIOS
 // ==========================================
 const comentarios = ref([]);
 const mostrarFormulario = ref(false);
@@ -33,21 +37,25 @@ const mensajeFormulario = ref({ texto: "", tipo: "" });
 const nuevoComentario = ref({
   titulo: "",
   comentario: "",
-  calificacion: "serie.calificacion", // Por defecto 5 estrellas
+  calificacion: "serie.calificacion",
 });
 
-// Variables para control de usuario y eliminación
+// ==========================================
+// CAJAS PARA CONTROL DEL USUARIO Y ELIMINACION
+// ==========================================
 const usuarioActualId = ref(null);
 const mostrarModalEliminar = ref(false);
 const comentarioAEliminar = ref(null);
 
 // ==========================================
-// PROPIEDADES COMPUTADAS
+// CALCULOS AUTOMATICOS DE LA PAGINA
 // ==========================================
+// Revisa si el usuario tiene su pase de entrada guardado
 const usuarioLogueado = computed(() => {
   return !!localStorage.getItem("token_cine");
 });
 
+// Acomoda el enlace del video para poder verlo dentro de la pagina
 const trailerSerieEmbedUrl = computed(() => {
   if (!serie.value || !serie.value.trailer) return "";
   const urlParams = new URLSearchParams(new URL(serie.value.trailer).search);
@@ -55,6 +63,7 @@ const trailerSerieEmbedUrl = computed(() => {
   return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : "";
 });
 
+// Organiza las temporadas y los episodios para que se vean bonitos
 const temporadas = computed(() => {
   const data = serie.value?.temporadas_info;
   if (!Array.isArray(data)) return [];
@@ -73,33 +82,39 @@ const temporadas = computed(() => {
   }));
 });
 
+// Suma todos los episodios de todas las temporadas
 const totalEpisodios = computed(() =>
   temporadas.value.reduce((acc, t) => acc + t.episodios.length, 0),
 );
 
+// Saca la lista de actores de la serie
 const actores = computed(() => {
   return Array.isArray(serie.value?.actores) ? serie.value.actores : [];
 });
 
 // ==========================================
-// MÉTODOS: INTERFAZ Y NAVEGACIÓN
+// CONTROL DE LAS PANTALLAS Y MENUS
 // ==========================================
+// Abre la pantalla oscura para ver el video
 const abrirTrailer = () => {
   if (serie.value?.trailer) {
     mostrarModal.value = true;
   } else {
-    alert("Esta serie no tiene tráiler disponible.");
+    alert("Esta serie no tiene trailer disponible.");
   }
 };
 
+// Cierra la pantalla del video
 const cerrarModal = () => {
   mostrarModal.value = false;
 };
 
+// Abre o cierra la lista de episodios de una temporada al hacer clic
 const toggleTemporada = (id) => {
   temporadaAbierta.value = temporadaAbierta.value === id ? null : id;
 };
 
+// Muestra o esconde la zona para escribir una opinion
 const alternarFormulario = () => {
   mostrarFormulario.value = !mostrarFormulario.value;
   if (!mostrarFormulario.value) {
@@ -107,18 +122,23 @@ const alternarFormulario = () => {
   }
 };
 
+// Vacia el texto del formulario para dejarlo limpio
 const resetFormulario = () => {
   nuevoComentario.value = { titulo: "", comentario: "", calificacion: "5" };
   editandoId.value = null;
   mensajeFormulario.value = { texto: "", tipo: "" };
 };
 
-// --- FUNCIONES PARA DIBUJAR ESTRELLAS Y USUARIO ---
+// ==========================================
+// DIBUJAR ESTRELLAS Y LEER EL PASE
+// ==========================================
+// Transforma la nota en estrellitas pintadas y vacias
 const mostrarEstrellas = (calificacion) => {
   const puntos = Number(calificacion) || 0;
   return "★".repeat(puntos) + "☆".repeat(5 - puntos);
 };
 
+// Lee el pase secreto del usuario para saber quien es
 const obtenerUsuarioDeToken = () => {
   const token = localStorage.getItem("token_cine");
   if (token) {
@@ -131,27 +151,36 @@ const obtenerUsuarioDeToken = () => {
   }
 };
 
-// --- MÉTODOS PARA EDITAR Y ELIMINAR ---
+// ==========================================
+// CORREGIR Y EDITAR OPINIONES
+// ==========================================
+// Pone el texto que ya habias escrito en el formulario para modificarlo
 const prepararEdicion = (comentario) => {
   nuevoComentario.value = {
     titulo: comentario.titulo,
-    comentario: comentario.texto || comentario.comentario, // Dependiendo de cómo lo devuelva tu API
+    comentario: comentario.texto || comentario.comentario,
     calificacion: comentario.calificacion,
   };
   editandoId.value = comentario.id;
   mostrarFormulario.value = true;
 };
 
+// ==========================================
+// BORRAR OPINIONES
+// ==========================================
+// Abre el aviso preguntando si estas seguro de borrar
 const confirmarEliminacion = (id_comentario) => {
   comentarioAEliminar.value = id_comentario;
   mostrarModalEliminar.value = true;
 };
 
+// Cierra el aviso sin borrar nada
 const cerrarModalEliminar = () => {
   mostrarModalEliminar.value = false;
   comentarioAEliminar.value = null;
 };
 
+// Va al servidor y quita el comentario para siempre
 const ejecutarEliminacion = async () => {
   if (!comentarioAEliminar.value) return;
 
@@ -177,8 +206,9 @@ const ejecutarEliminacion = async () => {
 };
 
 // ==========================================
-// MÉTODOS: LLAMADAS AL BACKEND (API)
+// PEDIR DATOS AL SERVIDOR
 // ==========================================
+// Trae toda la informacion de la serie
 const cargarSerie = async () => {
   try {
     cargando.value = true;
@@ -197,6 +227,7 @@ const cargarSerie = async () => {
   }
 };
 
+// Trae las opiniones de la gente sobre esta serie
 const cargarResenas = async () => {
   try {
     const id = route.params.id;
@@ -205,11 +236,14 @@ const cargarResenas = async () => {
     const respuesta = await axios.get(url, config);
     comentarios.value = respuesta.data.comentarios;
   } catch (err) {
-    console.error("Error al cargar las reseñas de la serie:", err);
+    console.error("Error al cargar las resenas de la serie:", err);
     comentarios.value = [];
   }
 };
 
+// ==========================================
+// ENVIAR O GUARDAR TU OPINION
+// ==========================================
 const enviarResena = async () => {
   try {
     enviandoComentario.value = true;
@@ -218,7 +252,7 @@ const enviarResena = async () => {
     const token = localStorage.getItem("token_cine");
     if (!token) {
       mensajeFormulario.value = {
-        texto: "Debes iniciar sesión para comentar.",
+        texto: "Debes iniciar sesion para comentar.",
         tipo: "error",
       };
       return;
@@ -239,23 +273,26 @@ const enviarResena = async () => {
     };
 
     if (editandoId.value) {
-      // CORREGIDO A 5003
+      // Si estamos corrigiendo una opinion vieja
       const urlPut = `http://127.0.0.1:5003/resenas/${editandoId.value}`;
       await axios.put(urlPut, payload, configAuth);
       mensajeFormulario.value = {
-        texto: "¡Reseña actualizada con éxito!",
+        texto: "¡Resena actualizada con exito!",
         tipo: "exito",
       };
     } else {
+      // Si estamos escribiendo una opinion nueva
       const urlPost = "http://127.0.0.1:5003/resenas";
       await axios.post(urlPost, payload, configAuth);
       mensajeFormulario.value = {
-        texto: "¡Comentario publicado con éxito!",
+        texto: "¡Comentario publicado con exito!",
         tipo: "exito",
       };
     }
 
     cargarResenas();
+
+    // Esperamos un momento breve antes de cerrar el formulario solito
     setTimeout(() => {
       alternarFormulario();
     }, 1500);
@@ -263,7 +300,7 @@ const enviarResena = async () => {
     console.error("Error al guardar el comentario:", err);
     mensajeFormulario.value = {
       texto:
-        err?.response?.data?.error || "Ocurrió un error al guardar tu reseña.",
+        err?.response?.data?.error || "Ocurrio un error al guardar tu resena.",
       tipo: "error",
     };
   } finally {
@@ -272,12 +309,13 @@ const enviarResena = async () => {
 };
 
 // ==========================================
-// CICLO DE VIDA
+// TAREAS AL ABRIR LA PANTALLA
 // ==========================================
+// Apenas arranca la pagina, busca toda la informacion de golpe
 onMounted(() => {
   cargarSerie();
   cargarResenas();
-  obtenerUsuarioDeToken(); // NECESARIO para saber qué reseñas podemos borrar/editar
+  obtenerUsuarioDeToken();
 });
 </script>
 

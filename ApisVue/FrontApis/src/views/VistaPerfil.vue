@@ -1,12 +1,12 @@
 <script setup>
 // ==========================================
-// 1. IMPORTACIONES
+// IMPORTACIONES
 // ==========================================
 import { ref, computed, onMounted } from "vue";
 import axios from "axios";
 
 // ==========================================
-// 2. ESTADO GLOBAL DE LA VISTA
+// ESTADO GLOBAL DE LA VISTA
 // ==========================================
 const cargando = ref(false);
 const mensajeVisual = ref({ texto: "", tipo: "" });
@@ -20,7 +20,7 @@ const usuario = ref({
 });
 
 // ==========================================
-// 3. LÓGICA DE AUTENTICACIÓN Y SESIÓN
+// LÓGICA DE AUTENTICACIÓN Y SESIÓN
 // ==========================================
 const cargarDatosUsuarioDesdeToken = () => {
   const token = localStorage.getItem("token_cine");
@@ -51,7 +51,7 @@ const cargarDatosUsuarioDesdeToken = () => {
 };
 
 // ==========================================
-// 4. LÓGICA DE EDICIÓN DE PERFIL (SOAP)
+// LÓGICA DE EDICIÓN DE PERFIL (SOAP)
 // ==========================================
 const editando = ref(false);
 const formulario = ref({});
@@ -116,7 +116,7 @@ const guardarCambios = async () => {
 };
 
 // ==========================================
-// 5. LÓGICA DE ANALÍTICAS (REST + PANDAS)
+// LÓGICA DE ANALÍTICAS (REST + PANDAS)
 // ==========================================
 const cargandoAnalitica = ref(false);
 const mostrarGrafica = ref(false);
@@ -302,7 +302,7 @@ onMounted(() => {
 
 <style scoped>
 /* ==========================================
-   1. ESTRUCTURA PRINCIPAL
+   ESTRUCTURA PRINCIPAL
    ========================================== */
 .vista-perfil {
   padding: 3rem 2rem;
@@ -316,7 +316,7 @@ onMounted(() => {
 }
 
 /* ==========================================
-   2. CABECERA Y DATOS DEL USUARIO
+   CABECERA Y DATOS DEL USUARIO
    ========================================== */
 .cabecera-usuario {
   display: flex;
@@ -359,7 +359,7 @@ onMounted(() => {
 }
 
 /* ==========================================
-   3. MODO EDICIÓN (FORMULARIO Y BOTONES)
+   MODO EDICIÓN (FORMULARIO Y BOTONES)
    ========================================== */
 .btn-editar-perfil {
   margin-top: 1rem;
@@ -431,7 +431,7 @@ onMounted(() => {
 }
 
 /* ==========================================
-   4. CAJA DE LLAMADO A LA ANALÍTICA
+   CAJA DE LLAMADO A LA ANALÍTICA
    ========================================== */
 .caja-analitica {
   background-color: #1a1a1a;
@@ -475,7 +475,7 @@ onMounted(() => {
 }
 
 /* ==========================================
-   5. RESULTADOS Y GRÁFICA
+   RESULTADOS Y GRÁFICA
    ========================================== */
 .resultado-grafica {
   background-color: white;
@@ -522,7 +522,7 @@ onMounted(() => {
 }
 
 /* ==========================================
-   6. ANIMACIONES
+   ANIMACIONES
    ========================================== */
 @keyframes aparecer {
   from {

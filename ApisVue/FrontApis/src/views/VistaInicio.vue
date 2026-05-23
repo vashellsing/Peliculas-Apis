@@ -1,73 +1,124 @@
 <script setup>
+
 import { ref, onMounted, watch, computed } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
 import TarjetaPelicula from "../components/TarjetaPelicula.vue";
 
+// Esto nos sirve para leer la direccion de arriba (la URL)
 const route = useRoute();
+
+// ==========================================
+// CAJAS PARA GUARDAR NUESTRA INFORMACION
+// ==========================================
+
+// Lista donde pondremos todas las peliculas
 const peliculas = ref([]);
+
+// Nos avisa si la pagina sigue pensando/cargando
 const cargando = ref(true);
+
+// Para guardar un mensaje si algo sale mal
 const error = ref(null);
 
+// ==========================================
+// DATOS PARA EL CONTROL DE PAGINAS
+// ==========================================
+
+// Empezamos siempre leyendo la pagina 1
 const paginaActual = ref(1);
+
+// Cuantas peliculas mostramos por cada pagina
 const elementosPorPagina = 8;
+
+// ==========================================
+// FUNCION PARA PEDIR LAS PELICULAS
+// ==========================================
 
 const cargarPeliculas = async () => {
   try {
+    // Empezamos a pensar y borramos cualquier error viejo
     cargando.value = true;
     error.value = null;
 
+    // La llave secreta para que el servidor nos deje entrar
     const configuracion = {
       headers: { "x-api-key": "mi_super_api_key_fija_123" },
     };
+
+    // Direccion basica para pedir TODAS las peliculas
     let url = "http://127.0.0.1:5000/peliculas";
 
+    // Si arriba en la direccion web dice que buscamos un titulo...
     if (route.query.titulo) {
       url = `http://127.0.0.1:5000/peliculas/buscar?q=${route.query.titulo}`;
-    } else if (route.query.categoria) {
+    }
+    // O si dice que buscamos por una categoria en especial...
+    else if (route.query.categoria) {
       url = `http://127.0.0.1:5000/peliculas/categoria?q=${route.query.categoria}`;
     }
 
+    // Tocamos la puerta del servidor y esperamos respuesta
     const respuesta = await axios.get(url, configuracion);
+
+    // Guardamos las peliculas en nuestra caja vacia
     peliculas.value = respuesta.data.peliculas;
   } catch (err) {
+    // Si algo falla, lo anotamos y ponemos un mensaje en pantalla
     console.error("Error al cargar cartelera:", err);
     error.value =
       err.response?.data?.mensaje ||
-      "No se encontraron películas para tu búsqueda.";
+      "No se encontraron peliculas para tu busqueda.";
+
+    // Vaciamos la caja porque no encontramos nada
     peliculas.value = [];
   } finally {
+    // Al final, haya salido bien o mal, avisamos que ya no estamos pensando
     cargando.value = false;
   }
 };
 
-// --- lOGICA PAGINACION ---
+// ==========================================
+// LOGICA PARA MOSTRAR LAS PAGINAS 
+// ==========================================
+
+// Calcula cuantas paginas necesitamos en total para todas las peliculas
 const totalPaginas = computed(() => {
   return Math.ceil(peliculas.value.length / elementosPorPagina);
 });
 
+// Recorta la gran lista para mostrar solo las de la pagina que estamos viendo
 const peliculasPaginadas = computed(() => {
   const inicio = (paginaActual.value - 1) * elementosPorPagina;
   const fin = inicio + elementosPorPagina;
   return peliculas.value.slice(inicio, fin);
 });
 
+// Funcion para que los botones de Siguiente/Anterior cambien de pagina
 const cambiarPagina = (nuevaPagina) => {
+  // Solo cambiamos si la pagina realmente existe
   if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas.value) {
     paginaActual.value = nuevaPagina;
+
+    // Deslizamos la pantalla suavemente hacia arriba
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 };
 
-// Cargar al inicio
+// ==========================================
+// EVENTOS QUE PONEN TODO A FUNCIONAR
+// ==========================================
+// Le decimos a la pagina: "Apenas te abras, ve a traer las peliculas"
 onMounted(() => {
   cargarPeliculas();
 });
 
-// Escuchar cambios en la URL PARA LA BUSQUEDA
+// El vigilante: se queda mirando si la direccion de arriba cambia
+// (Esto pasa cuando usamos la barra de busqueda)
 watch(
   () => route.query,
   () => {
+    // Si la URL cambia, volvemos a la pagina 1 y buscamos de nuevo
     paginaActual.value = 1;
     cargarPeliculas();
   },

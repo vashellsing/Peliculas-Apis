@@ -1,91 +1,119 @@
 <script setup>
+// ==========================================
+// HERRAMIENTAS NECESARIAS
+// ==========================================
 import { ref, computed, onMounted } from "vue";
 import axios from "axios";
 import TarjetaPelicula from "../components/TarjetaPelicula.vue";
 
-// Variables reactivas para el estado de la vista
+// ==========================================
+// CAJAS PARA GUARDAR NUESTRA INFORMACION
+// ==========================================
+
+// Lista donde pondremos las peliculas favoritas del usuario
 const peliculasFavoritas = ref([]);
+
+// Nos avisa si la pagina sigue pensando
 const cargando = ref(true);
+
+// Para guardar un mensaje si algo sale mal
 const errorMensaje = ref("");
 
 // ==========================================
-// FUNCIÓN PARA TRAER LOS FAVORITOS DE LA API
+// FUNCION PARA BUSCAR LAS PELICULAS FAVORITAS
 // ==========================================
+
 const cargarFavoritos = async () => {
+  // Empezamos a pensar y borramos cualquier error viejo
   cargando.value = true;
   errorMensaje.value = "";
 
   try {
+    // Buscamos el pase de entrada del usuario para saber quien es
     const token = localStorage.getItem("token_cine");
 
+    // Si no tiene pase, le pedimos que inicie sesion
     if (!token) {
-      errorMensaje.value = "Debes iniciar sesión para ver tus favoritos.";
+      errorMensaje.value = "Debes iniciar sesion para ver tus favoritos.";
       cargando.value = false;
-      return;
+      return; // Detenemos la busqueda aqui mismo
     }
 
+    // Preparamos las llaves y el pase para que el servidor nos deje entrar
     const configuracion = {
       headers: {
-        "x-api-key": "mi_super_api_key_fija_123", // Usa tu API Key real
+        "x-api-key": "mi_super_api_key_fija_123",
         Authorization: `Bearer ${token}`,
       },
     };
 
-    // Petición al backend (Ajusta el puerto 5001 si es necesario)
+    // Pedimos favoritos
     const respuesta = await axios.get(
       "http://127.0.0.1:5000/favoritos/mio",
       configuracion,
     );
 
-    // Mapeamos los datos que ahora sí vienen directo de tu tabla Películas
-    peliculasFavoritas.value = respuesta.data.favoritos.map(fav => ({
+    // Acomodamos la informacion que nos manda el servidor para usarla en nuestras tarjetas
+    peliculasFavoritas.value = respuesta.data.favoritos.map((fav) => ({
       id: fav.id_pelicula,
       titulo: fav.titulo,
-      calificacion: fav.calificacion, // ¡Ya lee el promedio dinámico!
-      imagenUrl: fav.poster
+      calificacion: fav.calificacion,
+      imagenUrl: fav.poster,
     }));
   } catch (error) {
-    console.error("Error al cargar favoritos:", error);
+    // Si hay un error, revisamos si es porque su pase de entrada ya vencio
     if (error.response && error.response.status === 401) {
       errorMensaje.value =
-        "Tu sesión ha expirado. Por favor, inicia sesión de nuevo.";
+        "Tu sesion ha expirado. Por favor, inicia sesion de nuevo.";
     } else {
+      // Si es otro problema distinto, mostramos un mensaje general
       errorMensaje.value = "Hubo un problema al cargar tus favoritos.";
     }
   } finally {
+    // Al final avisamos que ya terminamos de pensar, pase lo que pase
     cargando.value = false;
   }
 };
 
-// Disparamos la carga cuando el componente se monta en pantalla
-onMounted(() => {
-  cargarFavoritos();
-});
-
 // ==========================================
-// LÓGICA DE PAGINACIÓN CORREGIDA
+// CONTROL DE LAS PAGINAS
 // ==========================================
+// Empezamos siempre en la primera pagina
 const paginaActual = ref(1);
+
+// Cuantas peliculas favoritas queremos mostrar a la vez en pantalla
 const elementosPorPagina = 4;
 
-// Ahora apunta correctamente a peliculasFavoritas
+// Calculamos cuantas paginas necesitamos en total
 const totalPaginas = computed(() => {
   return Math.ceil(peliculasFavoritas.value.length / elementosPorPagina);
 });
 
-// Ahora corta el arreglo de datos reales
+// Recortamos la gran lista para mostrar solo las peliculas de esta pagina
 const PeliculasPaginadas = computed(() => {
   const inicio = (paginaActual.value - 1) * elementosPorPagina;
   const fin = inicio + elementosPorPagina;
   return peliculasFavoritas.value.slice(inicio, fin);
 });
 
+// Funcion para pasar a la siguiente pagina o a la anterior
 const cambiarPagina = (nuevaPagina) => {
+  // Solo cambiamos si la pagina a la que queremos ir realmente existe
   if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas.value) {
     paginaActual.value = nuevaPagina;
+
+    // Subimos la pantalla suavemente hasta la parte de arriba
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 };
+
+// ==========================================
+// EVENTOS AL ABRIR LA PAGINA
+// ==========================================
+// Le decimos a la pagina que busque los favoritos en cuanto se abra
+onMounted(() => {
+  cargarFavoritos();
+});
 </script>
 
 <template>

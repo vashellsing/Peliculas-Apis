@@ -1,43 +1,22 @@
 <script setup>
+// ==========================================
+// HERRAMIENTAS NECESARIAS
+// ==========================================
 import { ref, onMounted, computed } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
 
+// Para saber en que direccion web estamos y sacar el ID de la pelicula
 const route = useRoute();
 
+// ==========================================
+// DATOS PRINCIPALES DE LA PELICULA
+// ==========================================
 const pelicula = ref(null);
 const cargando = ref(true);
 const error = ref(null);
 
-const textoModalMensaje = ref("");
-const tipoModalMensaje = ref("exito"); // 'exito' o 'error'
-const mostrarModal = ref(false);
-const mostrarModalMensaje = ref(false);
-
-const abrirModalMensaje = (texto, tipo = "exito") => {
-  textoModalMensaje.value = texto;
-  tipoModalMensaje.value = tipo;
-  mostrarModalMensaje.value = true;
-};
-
-const cerrarModalMensaje = () => {
-  mostrarModalMensaje.value = false;
-};
-
-const funcionesDisponibles = ref([]);
-
-// Convertimos el link para que funcione a embed
-const trailerEmbedUrl = computed(() => {
-  if (!pelicula.value || !pelicula.value.trailer) return "";
-
-  // Extraemos el ID del video de la URL normal
-  const urlParams = new URLSearchParams(new URL(pelicula.value.trailer).search);
-  const videoId = urlParams.get("v");
-
-  // Le agregamos ?autoplay=1 para que se reproduzca solito al abrir el modal
-  return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : "";
-});
-
+// Funcion para traer toda la informacion de la pelicula
 const cargarDetalles = async () => {
   try {
     const configuracion = {
@@ -51,18 +30,68 @@ const cargarDetalles = async () => {
     );
     pelicula.value = respuesta.data.pelicula;
   } catch (err) {
-    console.error("Error al cargar la película:", err);
-    error.value = "No pudimos encontrar esta película.";
+    console.error("Error al cargar la pelicula:", err);
+    error.value = "No pudimos encontrar esta pelicula.";
   } finally {
     cargando.value = false;
   }
 };
 
-// --- VARIABLES PARA FAVORITOS ---
+// ==========================================
+// VENTANAS DE MENSAJES Y AVISOS
+// ==========================================
+const textoModalMensaje = ref("");
+const tipoModalMensaje = ref("exito"); 
+const mostrarModalMensaje = ref(false);
+
+const abrirModalMensaje = (texto, tipo = "exito") => {
+  textoModalMensaje.value = texto;
+  tipoModalMensaje.value = tipo;
+  mostrarModalMensaje.value = true;
+};
+
+const cerrarModalMensaje = () => {
+  mostrarModalMensaje.value = false;
+};
+
+// ==========================================
+// REPRODUCTOR DEL TRAILER
+// ==========================================
+const mostrarModal = ref(false);
+
+// Acomodamos el enlace del video para que se pueda ver directo en la pagina
+const trailerEmbedUrl = computed(() => {
+  if (!pelicula.value || !pelicula.value.trailer) return "";
+
+  // Sacamos el codigo secreto del video de Youtube
+  const urlParams = new URLSearchParams(new URL(pelicula.value.trailer).search);
+  const videoId = urlParams.get("v");
+
+  // Le decimos que arranque a reproducirse solito cuando se abra
+  return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : "";
+});
+
+// Abre la pantalla oscura para ver el video
+const abrirTrailer = () => {
+  if (pelicula.value.trailer) {
+    mostrarModal.value = true;
+  } else {
+    alert("Lo sentimos, no hay trailer disponible para esta pelicula.");
+  }
+};
+
+// Cierra la pantalla del video
+const cerrarModal = () => {
+  mostrarModal.value = false;
+};
+
+// ==========================================
+// SISTEMA DE FAVORITOS
+// ==========================================
 const esFavorito = ref(false);
 const procesandoFavorito = ref(false);
 
-// --- FUNCIONES DE FAVORITOS ---
+// Revisa si el usuario ya tenia esta pelicula guardada
 const verificarSiEsFavorito = async () => {
   const token = localStorage.getItem("token_cine");
   if (!token) return;
@@ -74,7 +103,8 @@ const verificarSiEsFavorito = async () => {
         Authorization: `Bearer ${token}`,
       },
     };
-    // Traemos la lista actual de favoritos
+
+    // Pedimos la lista completa de favoritos del usuario
     const respuesta = await axios.get(
       "http://127.0.0.1:5000/favoritos/mio",
       configuracion,
@@ -82,7 +112,7 @@ const verificarSiEsFavorito = async () => {
     const favoritosUsuario = respuesta.data.favoritos || [];
     const idActual = Number(route.params.id);
 
-    // Verificamos si la película actual ya existe en su lista
+    // Buscamos si esta pelicula esta en esa lista
     const yaEsta = favoritosUsuario.some((fav) => fav.id_pelicula === idActual);
     if (yaEsta) {
       esFavorito.value = true;
@@ -92,10 +122,11 @@ const verificarSiEsFavorito = async () => {
   }
 };
 
+// Funcion para agregar (esta la tenias en tu codigo original)
 const agregarAFavoritos = async () => {
   const token = localStorage.getItem("token_cine");
   if (!token) {
-    alert("Debes iniciar sesión para añadir películas a favoritos.");
+    alert("Debes iniciar sesion para anadir peliculas a favoritos.");
     return;
   }
 
@@ -109,14 +140,12 @@ const agregarAFavoritos = async () => {
       },
     };
 
-    // Ajusta el endpoint "/favoritos" si tu backend lo llama distinto para hacer POST
     const payload = { id_pelicula: Number(route.params.id) };
     await axios.post("http://127.0.0.1:5000/favoritos", payload, configuracion);
 
-    esFavorito.value = true; // Cambiamos el estado visual
+    esFavorito.value = true;
   } catch (err) {
-    console.error("Error al añadir a favoritos:", err);
-    // Si el backend tira error 400 porque ya estaba agregada, lo manejamos limpio
+    console.error("Error al anadir a favoritos:", err);
     if (
       err.response &&
       (err.response.status === 400 || err.response.status === 409)
@@ -124,7 +153,7 @@ const agregarAFavoritos = async () => {
       esFavorito.value = true;
     } else {
       alert(
-        err.response?.data?.error || "Hubo un problema al añadir a favoritos.",
+        err.response?.data?.error || "Hubo un problema al anadir a favoritos.",
       );
     }
   } finally {
@@ -132,99 +161,12 @@ const agregarAFavoritos = async () => {
   }
 };
 
-// Abre el modal en lugar de salir de la vista
-const abrirTrailer = () => {
-  if (pelicula.value.trailer) {
-    mostrarModal.value = true;
-  } else {
-    alert("Lo sentimos, no hay tráiler disponible para esta película.");
-  }
-};
-
-// Cierra el modal
-const cerrarModal = () => {
-  mostrarModal.value = false;
-};
-// Aqui estaran los comentariso cuando se conecte el api
-const comentarios = ref([]);
-
-//////////////////Cargar cartelera:
-
-const cargarCartelera = async () => {
-  try {
-    const configuracion = {
-      headers: { "x-api-key": "mi_super_api_key_fija_123" },
-    };
-    const idUrl = route.params.id;
-
-    // Llamamos al puerto 5002 de la cartelera
-    const respuesta = await axios.get(
-      `http://127.0.0.1:5002/cartelera/pelicula/${idUrl}`,
-      configuracion,
-    );
-
-    // Asignamos la respuesta a nuestra variable reactiva
-    funcionesDisponibles.value = respuesta.data.cartelera;
-  } catch (err) {
-    console.error("Error al cargar la cartelera:", err);
-    // Si la película no tiene funciones, aseguramos que el arreglo quede vacío
-    funcionesDisponibles.value = [];
-  }
-};
-
-////////// COMENTARIOS
-
-const cargarComentarios = async () => {
-  try {
-    const configuracion = {
-      headers: { "x-api-key": "mi_super_api_key_fija_123" },
-    };
-    const idUrl = route.params.id;
-
-    // Llamamos al puerto 5003
-    const respuesta = await axios.get(
-      `http://127.0.0.1:5003/resenas/${idUrl}`,
-      configuracion,
-    );
-    // Asignamos la respuesta a la variable reactiva
-    comentarios.value = respuesta.data.comentarios;
-  } catch (err) {
-    console.error("Error al cargar los comentarios:", err);
-  }
-};
-
-const nuevoComentario = ref({
-  titulo: "",
-  comentario: "",
-  calificacion: 5,
-});
-const mensajeFormulario = ref({ texto: "", tipo: "" }); // Para mostrar éxito o error
-const enviandoComentario = ref(false);
-
-// --- NUEVAS VARIABLES PARA LA UI Y LA EDICIÓN ---
-const mostrarFormulario = ref(false);
-const editandoId = ref(null); // Guardará el ID de la reseña si estamos editando
-const usuarioActualId = ref(null);
-
-// Función para extraer el ID del usuario desde el JWT
-const obtenerUsuarioDeToken = () => {
-  const token = localStorage.getItem("token_cine");
-  if (token) {
-    try {
-      // El payload del JWT es la segunda parte separada por punto
-      const payload = JSON.parse(atob(token.split(".")[1]));
-      usuarioActualId.value = payload.id; // Asegúrate de que el JWT traiga 'id'
-    } catch (e) {
-      console.error("Error al decodificar token", e);
-    }
-  }
-};
-
+// Funcion principal del boton del corazon (quita y pone de favoritos)
 const alternarFavorito = async () => {
   const token = localStorage.getItem("token_cine");
   if (!token) {
     abrirModalMensaje(
-      "Debes iniciar sesión para interactuar con tus favoritos.",
+      "Debes iniciar sesion para interactuar con tus favoritos.",
       "error",
     );
     return;
@@ -242,31 +184,31 @@ const alternarFavorito = async () => {
     };
 
     if (esFavorito.value) {
-      // Si YA ES favorito, enviamos un DELETE al backend
+      // Si ya estaba guardada, le decimos al servidor que la borre
       await axios.delete(
         `http://127.0.0.1:5000/favoritos/${id_pelicula}`,
         configuracion,
       );
       esFavorito.value = false;
       abrirModalMensaje(
-        "La película fue eliminada de tu lista de favoritos.",
+        "La pelicula fue eliminada de tu lista de favoritos.",
         "exito",
       );
     } else {
-      // Si NO ES favorito, enviamos un POST al backend
+      // Si no estaba guardada, le decimos que la guarde
       await axios.post(
         "http://127.0.0.1:5000/favoritos",
         { id_pelicula },
         configuracion,
       );
       esFavorito.value = true;
-      abrirModalMensaje("¡Película añadida a favoritos exitosamente!", "exito");
+      abrirModalMensaje("¡Pelicula anadida a favoritos exitosamente!", "exito");
     }
   } catch (err) {
     console.error("Error al modificar favoritos:", err);
     abrirModalMensaje(
       err.response?.data?.error ||
-        "Hubo un problema de conexión con el servidor.",
+        "Hubo un problema de conexion con el servidor.",
       "error",
     );
   } finally {
@@ -274,19 +216,90 @@ const alternarFavorito = async () => {
   }
 };
 
-const alternarFormulario = () => {
-  mostrarFormulario.value = !mostrarFormulario.value;
-  if (!mostrarFormulario.value) {
-    limpiarFormulario(); // Si lo cierra, limpiamos todo
+// ==========================================
+// FUNCIONES Y HORARIOS (CARTELERA)
+// ==========================================
+const funcionesDisponibles = ref([]);
+
+const cargarCartelera = async () => {
+  try {
+    const configuracion = {
+      headers: { "x-api-key": "mi_super_api_key_fija_123" },
+    };
+    const idUrl = route.params.id;
+
+    // Buscamos los horarios en el servidor de cartelera
+    const respuesta = await axios.get(
+      `http://127.0.0.1:5002/cartelera/pelicula/${idUrl}`,
+      configuracion,
+    );
+
+    funcionesDisponibles.value = respuesta.data.cartelera;
+  } catch (err) {
+    console.error("Error al cargar la cartelera:", err);
+    funcionesDisponibles.value = [];
   }
 };
 
+// ==========================================
+// LECTURA DE COMENTARIOS Y RESENAS
+// ==========================================
+const comentarios = ref([]);
+
+const cargarComentarios = async () => {
+  try {
+    const configuracion = {
+      headers: { "x-api-key": "mi_super_api_key_fija_123" },
+    };
+    const idUrl = route.params.id;
+
+    // Buscamos las opiniones de la gente
+    const respuesta = await axios.get(
+      `http://127.0.0.1:5003/resenas/${idUrl}`,
+      configuracion,
+    );
+    comentarios.value = respuesta.data.comentarios;
+  } catch (err) {
+    console.error("Error al cargar los comentarios:", err);
+  }
+};
+
+// Dibuja las estrellitas llenas y vacias segun la nota
+const mostrarEstrellas = (calificacion) => {
+  const puntos = Number(calificacion) || 0;
+  return "★".repeat(puntos) + "☆".repeat(5 - puntos);
+};
+
+// ==========================================
+// ESCRIBIR Y EDITAR COMENTARIOS
+// ==========================================
+const nuevoComentario = ref({
+  titulo: "",
+  comentario: "",
+  calificacion: 5,
+});
+
+const mensajeFormulario = ref({ texto: "", tipo: "" });
+const enviandoComentario = ref(false);
+const mostrarFormulario = ref(false);
+const editandoId = ref(null);
+
+// Muestra o esconde la cajita para escribir
+const alternarFormulario = () => {
+  mostrarFormulario.value = !mostrarFormulario.value;
+  if (!mostrarFormulario.value) {
+    limpiarFormulario();
+  }
+};
+
+// Vacia las cajas de texto
 const limpiarFormulario = () => {
   nuevoComentario.value = { titulo: "", comentario: "", calificacion: 5 };
   editandoId.value = null;
   mensajeFormulario.value = { texto: "", tipo: "" };
 };
 
+// Llena la caja de texto con lo que ya habias escrito para poder corregirlo
 const prepararEdicion = (comentario) => {
   nuevoComentario.value = {
     titulo: comentario.titulo,
@@ -295,29 +308,100 @@ const prepararEdicion = (comentario) => {
   };
   editandoId.value = comentario.id;
   mostrarFormulario.value = true;
+
+  // Desliza la pantalla hasta donde esta la caja de texto
   window.scrollTo({
     top: document.querySelector(".formulario-comentario")?.offsetTop,
     behavior: "smooth",
   });
 };
 
-// --- NUEVAS VARIABLES PARA EL MODAL DE ELIMINACIÓN ---
+// Envia tu opinion al servidor (sirve para nuevos y para editados)
+const enviarResena = async () => {
+  mensajeFormulario.value = { texto: "", tipo: "" };
+  const token = localStorage.getItem("token_cine");
+
+  if (!token) {
+    mensajeFormulario.value = {
+      texto: "Debes iniciar sesion para dejar una resena.",
+      tipo: "error",
+    };
+    return;
+  }
+
+  enviandoComentario.value = true;
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    const datosAEnviar = {
+      id_pelicula: Number(route.params.id),
+      titulo: nuevoComentario.value.titulo,
+      comentario: nuevoComentario.value.comentario,
+      calificacion: nuevoComentario.value.calificacion,
+    };
+
+    if (editandoId.value) {
+      // Si estamos corrigiendo un comentario viejo
+      await axios.put(
+        `http://127.0.0.1:5003/resenas/${editandoId.value}`,
+        datosAEnviar,
+        configuracion,
+      );
+      mensajeFormulario.value = {
+        texto: "¡Comentario actualizado con exito!",
+        tipo: "exito",
+      };
+    } else {
+      // Si es un comentario totalmente nuevo
+      await axios.post(
+        "http://127.0.0.1:5003/resenas",
+        datosAEnviar,
+        configuracion,
+      );
+      mensajeFormulario.value = {
+        texto: "¡Comentario publicado con exito!",
+        tipo: "exito",
+      };
+    }
+
+    limpiarFormulario();
+    mostrarFormulario.value = false;
+    await cargarComentarios(); // Actualizamos la lista de comentarios
+  } catch (err) {
+    console.error(err);
+    const mensajeError =
+      err.response?.data?.error || "Ocurrio un error al enviar tu resena.";
+    mensajeFormulario.value = { texto: mensajeError, tipo: "error" };
+  } finally {
+    enviandoComentario.value = false;
+  }
+};
+
+// ==========================================
+// BORRAR COMENTARIOS
+// ==========================================
 const mostrarModalEliminar = ref(false);
 const comentarioAEliminar = ref(null);
 
-// 1. Función para abrir el modal y guardar qué vamos a borrar
+// Abre el cuadrito que te pregunta si estas seguro de borrar
 const confirmarEliminacion = (id_comentario) => {
   comentarioAEliminar.value = id_comentario;
   mostrarModalEliminar.value = true;
 };
 
-// 2. Función para cerrar el modal sin hacer nada
+// Cierra el cuadrito sin borrar nada
 const cerrarModalEliminar = () => {
   mostrarModalEliminar.value = false;
   comentarioAEliminar.value = null;
 };
 
-// 3. Función que realmente va al backend a borrar
+// Le avisa al servidor que borre la opinion para siempre
 const ejecutarEliminacion = async () => {
   if (!comentarioAEliminar.value) return;
 
@@ -334,92 +418,43 @@ const ejecutarEliminacion = async () => {
       `http://127.0.0.1:5003/resenas/${comentarioAEliminar.value}`,
       config,
     );
-    await cargarComentarios(); // Recargamos la lista
-    cerrarModalEliminar(); // Cerramos el modal al terminar con éxito
+    await cargarComentarios();
+    cerrarModalEliminar();
   } catch (err) {
     console.error("Error eliminando comentario", err);
     alert(err.response?.data?.error || "No se pudo eliminar el comentario");
   }
 };
 
-// --- NUEVO: Función para enviar el comentario ---
-// --- FUNCIÓN ACTUALIZADA: ENVIAR O EDITAR RESEÑA ---
-const enviarResena = async () => {
-  mensajeFormulario.value = { texto: "", tipo: "" };
+// ==========================================
+// IDENTIFICACION DEL USUARIO
+// ==========================================
+const usuarioActualId = ref(null);
+
+// Averigua quien esta usando la pagina leyendo su pase de entrada
+const obtenerUsuarioDeToken = () => {
   const token = localStorage.getItem("token_cine");
-
-  if (!token) {
-    mensajeFormulario.value = {
-      texto: "Debes iniciar sesión para dejar una reseña.",
-      tipo: "error",
-    };
-    return;
-  }
-
-  enviandoComentario.value = true;
-
-  try {
-    const configuracion = {
-      headers: {
-        "x-api-key": "mi_super_api_key_fija_123",
-        Authorization: `Bearer ${token}`,
-      },
-    };
-
-    const payload = {
-      id_pelicula: Number(route.params.id),
-      titulo: nuevoComentario.value.titulo,
-      comentario: nuevoComentario.value.comentario,
-      calificacion: nuevoComentario.value.calificacion,
-    };
-
-    if (editandoId.value) {
-      // Si hay un ID guardado, significa que ESTAMOS EDITANDO (PUT)
-      await axios.put(
-        `http://127.0.0.1:5003/resenas/${editandoId.value}`,
-        payload,
-        configuracion,
-      );
-      mensajeFormulario.value = {
-        texto: "¡Comentario actualizado con éxito!",
-        tipo: "exito",
-      };
-    } else {
-      // Si no hay ID, ESTAMOS CREANDO UNO NUEVO (POST)
-      await axios.post("http://127.0.0.1:5003/resenas", payload, configuracion);
-      mensajeFormulario.value = {
-        texto: "¡Comentario publicado con éxito!",
-        tipo: "exito",
-      };
+  if (token) {
+    try {
+      // Desciframos el pase para leer el numero de identificacion del usuario
+      const datosDelPase = JSON.parse(atob(token.split(".")[1]));
+      usuarioActualId.value = datosDelPase.id;
+    } catch (e) {
+      console.error("Error al descifrar el pase", e);
     }
-
-    limpiarFormulario();
-    mostrarFormulario.value = false; // Ocultamos el formulario al terminar
-    await cargarComentarios();
-  } catch (err) {
-    console.error(err);
-    const mensajeError =
-      err.response?.data?.error || "Ocurrió un error al enviar tu reseña.";
-    mensajeFormulario.value = { texto: mensajeError, tipo: "error" };
-  } finally {
-    enviandoComentario.value = false;
   }
 };
 
-// --- NUEVO: Función para dibujar las estrellas ---
-const mostrarEstrellas = (calificacion) => {
-  const puntos = Number(calificacion) || 0;
-  // Repite la estrella llena 'puntos' veces y la vacía el resto hasta llegar a 5
-  return "★".repeat(puntos) + "☆".repeat(5 - puntos);
-};
-
-// No olvides ejecutar obtenerUsuarioDeToken en el onMounted:
+// ==========================================
+// EVENTOS AL ABRIR LA PAGINA
+// ==========================================
+// Apenas se carga la pantalla, le pedimos que haga todas estas tareas
 onMounted(() => {
   cargarDetalles();
   verificarSiEsFavorito();
   cargarComentarios();
   cargarCartelera();
-  obtenerUsuarioDeToken(); // Agregamos esto
+  obtenerUsuarioDeToken();
 });
 </script>
 

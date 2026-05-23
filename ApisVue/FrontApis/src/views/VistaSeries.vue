@@ -1,59 +1,83 @@
 <script setup>
+// ==========================================
+// HERRAMIENTAS NECESARIAS
+// ==========================================
 import { ref, computed, onMounted } from "vue";
 import axios from "axios";
 import TarjetaSerie from "@/components/TarjetaSerie.vue";
 
-// 1. Variables para los datos reales y el estado de carga
+// ==========================================
+// CAJAS PARA GUARDAR NUESTRA INFORMACION
+// ==========================================
+
+// Aqui guardamos la lista de series que nos manda el servidor
 const seriesBackend = ref([]);
+
+// Esto nos avisa si la pagina sigue pensando/cargando
 const cargando = ref(true);
 
-// 2. FUNCIÓN MÁGICA: Conecta al backend
+// ==========================================
+// FUNCION PARA PEDIR LAS SERIES AL SERVIDOR
+// ==========================================
 const cargarSeries = async () => {
   try {
-    // Configuración con tu API KEY
+    // La llave secreta para que el servidor nos deje pasar
     const config = {
       headers: { "x-api-key": "mi_super_api_key_fija_123" },
     };
 
-    // Llamamos al puerto 5001 que me confirmaste que funciona
+    // La direccion exacta de donde sacamos las series
     const url = "http://127.0.0.1:5001/series";
 
+    // Tocamos la puerta del servidor y esperamos la respuesta
     const respuesta = await axios.get(url, config);
 
-    // Guardamos los datos que nos envía Flask
+    // Guardamos las series en nuestra caja vacia
     seriesBackend.value = respuesta.data.series;
   } catch (error) {
+    // Si algo sale mal, lo anotamos aqui para revisarlo
     console.error("Error al cargar las series:", error);
   } finally {
-    // Ya terminó de cargar (sea éxito o error)
+    // Al final, haya salido bien o mal, avisamos que ya terminamos de pensar
     cargando.value = false;
   }
 };
 
-// 3. Ejecutar la función apenas se abra la página
+// Le decimos a la pagina: "Apenas abras, ve a traer las series"
 onMounted(() => {
   cargarSeries();
 });
 
 // ==========================================
-// LÓGICA DE PAGINACIÓN
+// CONTROL DE LAS PAGINAS (PAGINACION)
 // ==========================================
-const paginaActual = ref(1);
-const elementosPorPagina = 8; // Subí a 8 para que se vean dos filas completas
 
+// Empezamos siempre leyendo la pagina 1
+const paginaActual = ref(1);
+
+// Cuantas series queremos mostrar por pantalla (8 para llenar 2 filas)
+const elementosPorPagina = 8;
+
+// Calculamos cuantas paginas necesitamos en total para todas las series
 const totalPaginas = computed(() => {
   return Math.ceil(seriesBackend.value.length / elementosPorPagina);
 });
 
+// Recortamos la gran lista para mostrar solo las series de la pagina actual
 const seriesPaginadas = computed(() => {
   const inicio = (paginaActual.value - 1) * elementosPorPagina;
   const fin = inicio + elementosPorPagina;
+
   return seriesBackend.value.slice(inicio, fin);
 });
 
+// Funcion para saltar de una pagina a otra usando los botones
 const cambiarPagina = (nuevaPagina) => {
+  // Verificamos que la pagina exista (que no sea cero ni mayor al limite)
   if (nuevaPagina >= 1 && nuevaPagina <= totalPaginas.value) {
     paginaActual.value = nuevaPagina;
+
+    // Subimos la pantalla suavemente hasta la parte de arriba
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 };
@@ -164,7 +188,7 @@ const cambiarPagina = (nuevaPagina) => {
 }
 
 /* ========================================== */
-/* ESTILOS DE PAGINACIÓN                      */
+/* ESTILOS DE PAGINACIoN                      */
 /* ========================================== */
 .paginacion {
   display: flex;
