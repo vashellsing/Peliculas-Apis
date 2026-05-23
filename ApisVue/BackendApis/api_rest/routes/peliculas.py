@@ -107,6 +107,75 @@ def obtener_pelicula_por_id(id_pelicula):
         return jsonify({"error": str(e)}), 500
 
 
+# Buscar películas por TÍTULO (Búsqueda por texto)
+@peliculas_bp.route("/peliculas/buscar", methods=["GET"])
+@require_api_key
+def buscar_por_titulo():
+    from app_peliculas import mysql
+
+    texto_buscado = request.args.get("q", "")
+
+    # Si el usuario no mandó nada, devolvemos un error 400
+    if not texto_buscado.strip():
+        return (
+            jsonify(
+                {
+                    "error": "Debes enviar texto para buscar. Ejemplo: /peliculas/buscar?q=Batman"
+                }
+            ),
+            400,
+        )
+
+    try:
+        cur = mysql.connection.cursor()
+
+        # Usamos LIKE con comodines % para buscar si el texto está contenido en el título
+        # Tambien le agregamos el LEFT JOIN para que traiga la calificacion como los otros endpoints
+        cur.execute(
+            """
+            SELECT p.id_pelicula, p.titulo, p.titulo_originalPelicula, p.sinopsis, 
+                   p.anio, p.actoresPelicula, p.generoPelicula, p.idiomaPelicula, p.poster,
+                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion
+            FROM Peliculas p
+            LEFT JOIN Comentarios c ON p.id_pelicula = c.id_peliculaComentario
+            WHERE p.titulo LIKE %s OR p.titulo_originalPelicula LIKE %s
+            GROUP BY p.id_pelicula
+            """,
+            (f"%{texto_buscado}%", f"%{texto_buscado}%"),
+        )
+
+        datos = cur.fetchall()
+        cur.close()
+
+        peliculas = []
+        for fila in datos:
+            peliculas.append(
+                {
+                    "id": fila[0],
+                    "titulo": fila[1],
+                    "titulo_original": fila[2],
+                    "sinopsis": fila[3],
+                    "anio": fila[4],
+                    "actores": fila[5],
+                    "genero": fila[6],
+                    "idioma": fila[7],
+                    "poster": fila[8],
+                    "calificacion": float(fila[9]),
+                }
+            )
+
+        if not peliculas:
+            return (
+                jsonify({"mensaje": "No se encontraron películas con ese título"}),
+                404,
+            )
+
+        return jsonify({"peliculas": peliculas}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # Buscar películas por CATEGORÍA
 @peliculas_bp.route("/peliculas/categoria", methods=["GET"])
 @require_api_key
