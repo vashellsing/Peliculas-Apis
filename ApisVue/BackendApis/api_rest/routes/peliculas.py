@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from pandas import DateOffset
 from utils.auth import require_api_key, require_jwt, require_role
 import json
 
@@ -178,29 +179,34 @@ def crear_pelicula():
     from app_peliculas import mysql
 
     datos = request.json
+
     if not datos or not datos.get("titulo") or not datos.get("anio"):
         return jsonify({"error": "El título y el año son obligatorios"}), 400
+
+    actores_lista = datos.get("actores", [])
+    actores_json = json.dumps(actores_lista)
 
     try:
         cur = mysql.connection.cursor()
         cur.execute(
             """
-            INSERT INTO Peliculas (titulo, titulo_originalPelicula, sinopsis, anio, 
-                                   actoresPelicula, generoPelicula, idiomaPelicula) 
+                INSERT INTO Peliculas (titulo, titulo_originalPelicula, sinopsis, anio, 
+                                    actoresPelicula, generoPelicula, idiomaPelicula) 
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """,
+            """,
             (
                 datos["titulo"],
                 datos.get("titulo_original", "No especificado"),
                 datos.get("sinopsis", ""),
                 datos["anio"],
-                datos.get("actores", ""),
+                actores_json,  # <--- AQUÍ ESTÁ LA MAGIA, usamos la variable ya convertida
                 datos.get("genero", "Otro"),
                 datos.get("idioma", "Otro"),
             ),
         )
         mysql.connection.commit()
         cur.close()
+
         return (
             jsonify(
                 {
@@ -210,12 +216,84 @@ def crear_pelicula():
             ),
             201,
         )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
     except Exception as e:
+        # Solo dejamos un bloque except
         return (
             jsonify({"error": "Error al registrar la película", "detalle": str(e)}),
+            500,
+        )
+
+
+# ==========================================
+# ACTUALIZAR PELÍCULA (Admin)
+# ==========================================
+@peliculas_bp.route("/peliculas/editar/<int:id_pelicula>", methods=["PUT"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
+def editar_pelicula(id_pelicula):
+    from app_peliculas import mysql
+
+    datos = request.json
+
+    if not datos or not datos.get("titulo") or not datos.get("anio"):
+        return jsonify({"error": "El título y el año son obligatorios"}), 400
+
+    actores_lista = datos.get("actores", [])
+    actores_json = json.dumps(actores_lista)
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute(
+            """
+            UPDATE Peliculas 
+            SET titulo = %s, titulo_originalPelicula = %s, sinopsis = %s, anio = %s, 
+                actoresPelicula = %s, generoPelicula = %s, idiomaPelicula = %s
+            WHERE id_pelicula = %s
+            """,
+            (
+                datos["titulo"],
+                datos.get("titulo_original", "No especificado"),
+                datos.get("sinopsis", ""),
+                datos["anio"],
+                actores_json,
+                datos.get("genero", "Otro"),
+                datos.get("idioma", "Otro"),
+                id_pelicula,
+            ),
+        )
+        mysql.connection.commit()
+        cur.close()
+
+        return jsonify({"mensaje": "Película actualizada exitosamente"}), 200
+    except Exception as e:
+        return (
+            jsonify({"error": "Error al actualizar la película", "detalle": str(e)}),
+            500,
+        )
+
+
+# ==========================================
+# ELIMINAR PELÍCULA (Admin)
+# ==========================================
+@peliculas_bp.route("/peliculas/eliminar/<int:id_pelicula>", methods=["DELETE"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
+def eliminar_pelicula(id_pelicula):
+    from app_peliculas import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("DELETE FROM Peliculas WHERE id_pelicula = %s", (id_pelicula,))
+        mysql.connection.commit()
+        cur.close()
+
+        return jsonify({"mensaje": "Película eliminada exitosamente"}), 200
+    except Exception as e:
+        return (
+            jsonify({"error": "Error al eliminar la película", "detalle": str(e)}),
             500,
         )
 
@@ -253,11 +331,6 @@ def agregar_favorito():
         return jsonify({"mensaje": "Añadido a favoritos"}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# ==========================================
-# 2. MOSTRAR FAVORITOS DE UN USUARIO
-# ==========================================
 
 
 # ==========================================

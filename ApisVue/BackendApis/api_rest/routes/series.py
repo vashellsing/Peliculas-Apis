@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from utils.auth import require_api_key
+from utils.auth import require_api_key, require_jwt, require_role
 import json
 
 # Creamos el Blueprint para las series
@@ -319,5 +319,125 @@ def buscar_por_genero():
             )
 
         return jsonify({"series": series}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# AGREGAR UNA NUEVA SERIE (Admin)
+# ==========================================
+@series_bp.route("/series", methods=["POST"])
+@require_jwt
+@require_api_key
+@require_role(["admin"])
+def agregar_serie():
+    from app_series import mysql
+    import json
+
+    data = request.json
+    actores_json = json.dumps(data.get("actores", []))
+
+    # Extraemos el array, contamos las temporadas y luego lo pasamos a JSON
+    episodios_data = data.get("episodiosSerie", [])
+    numero_temporadas = len(episodios_data)
+    episodios_json = json.dumps(episodios_data)
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute(
+            """
+            INSERT INTO Series 
+            (tituloSerie, titulo_originalSerie, sinopsisSerie, anio_lanzamientoSerie, 
+             temporadasSerie, actoresSerie, generoSerie, idiomaSerie, posterSerie, trailerSerie, episodiosSerie)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """,
+            (
+                data.get("titulo"),
+                data.get("titulo_original"),
+                data.get("sinopsis"),
+                data.get("anio"),
+                numero_temporadas,  # <--- Guarda el entero (ej: 2)
+                actores_json,
+                data.get("genero"),
+                data.get("idioma"),
+                data.get("poster", ""),
+                data.get("trailer", ""),
+                episodios_json,  # <--- Guarda el JSON completo
+            ),
+        )
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({"mensaje": "Serie agregada exitosamente"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# EDITAR UNA SERIE EXISTENTE (Admin)
+# ==========================================
+@series_bp.route("/series/<int:id_serie>", methods=["PUT"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
+def editar_serie(id_serie):
+    from app_series import mysql
+    import json
+
+    data = request.json
+    actores_json = json.dumps(data.get("actores", []))
+
+    # Extraemos el array, contamos las temporadas y luego lo pasamos a JSON
+    episodios_data = data.get("episodiosSerie", [])
+    numero_temporadas = len(episodios_data)
+    episodios_json = json.dumps(episodios_data)
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute(
+            """
+            UPDATE Series 
+            SET tituloSerie=%s, titulo_originalSerie=%s, sinopsisSerie=%s, 
+                anio_lanzamientoSerie=%s, temporadasSerie=%s, actoresSerie=%s, 
+                generoSerie=%s, idiomaSerie=%s, posterSerie=%s, trailerSerie=%s, episodiosSerie=%s
+            WHERE id_serie=%s
+            """,
+            (
+                data.get("titulo"),
+                data.get("titulo_original"),
+                data.get("sinopsis"),
+                data.get("anio"),
+                numero_temporadas,  # <--- Guarda el entero (ej: 2)
+                actores_json,
+                data.get("genero"),
+                data.get("idioma"),
+                data.get("poster", ""),
+                data.get("trailer", ""),
+                episodios_json,  # <--- Guarda el JSON completo
+                id_serie,
+            ),
+        )
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({"mensaje": "Serie actualizada exitosamente"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# ELIMINAR UNA SERIE (Admin)
+# ==========================================
+@series_bp.route("/series/<int:id_serie>", methods=["DELETE"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
+def eliminar_serie(id_serie):
+    from app_series import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("DELETE FROM Series WHERE id_serie = %s", (id_serie,))
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({"mensaje": "Serie eliminada exitosamente"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
