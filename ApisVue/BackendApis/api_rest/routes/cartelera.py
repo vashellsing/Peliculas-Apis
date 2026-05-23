@@ -15,17 +15,15 @@ def obtener_cartelera():
 
     try:
         cur = mysql.connection.cursor()
-        # Usamos JOIN para traer el título de la película y el nombre del cine
-        cur.execute(
-            """
+        # 1. Agregamos cin.linkWeb (o el nombre exacto de tu columna en la DB) al SELECT
+        cur.execute("""
             SELECT c.id_cartelera, p.titulo, cin.nombreCine, cin.ciudadCine, 
-                   c.fecha_horaCartelera, c.idioma_proyeccionCartelera 
+                   c.fecha_horaCartelera, c.idioma_proyeccionCartelera, cin.linkWeb 
             FROM Carteleras c
             INNER JOIN Peliculas p ON c.id_peliculaCartelera = p.id_pelicula
             INNER JOIN Cines cin ON c.id_cineCartelera = cin.id_cine
             ORDER BY c.fecha_horaCartelera ASC
-        """
-        )
+        """)
 
         datos = cur.fetchall()
         cur.close()
@@ -40,6 +38,57 @@ def obtener_cartelera():
                     "ciudad": fila[3],
                     "fecha_hora": fila[4].strftime("%Y-%m-%d %H:%M:%S"),
                     "idioma": fila[5],
+                    "link_cine": fila[
+                        6
+                    ],  # <-- 2. Lo mapeamos aquí como la posición fila[6]
+                }
+            )
+
+        return jsonify({"cartelera": funciones}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# BUSCAR FUNCIONES POR PELÍCULA (GET)
+# ==========================================
+@cartelera_bp.route("/cartelera/pelicula/<int:id_pelicula>", methods=["GET"])
+@require_api_key
+def buscar_por_pelicula(id_pelicula):
+    from app_cartelera import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        # Asegúrate de que 'direccionCine' exista en tu tabla Cines. Si se llama distinto, cámbialo aquí.
+        cur.execute(
+            """
+            SELECT c.id_cartelera, p.titulo, cin.nombreCine, cin.ciudadCine, cin.direccionCine,
+                   c.fecha_horaCartelera, c.idioma_proyeccionCartelera 
+            FROM Carteleras c
+            INNER JOIN Peliculas p ON c.id_peliculaCartelera = p.id_pelicula
+            INNER JOIN Cines cin ON c.id_cineCartelera = cin.id_cine
+            WHERE c.id_peliculaCartelera = %s
+            ORDER BY c.fecha_horaCartelera ASC
+            """,
+            (id_pelicula,),
+        )
+
+        datos = cur.fetchall()
+        cur.close()
+
+        funciones = []
+        for fila in datos:
+            funciones.append(
+                {
+                    "id_cartelera": fila[0],
+                    "pelicula": fila[1],
+                    "nombreCine": fila[2],
+                    "ciudadCine": fila[3],
+                    "direccionCine": fila[4],
+                    "fecha_hora": fila[5].strftime(
+                        "%Y-%m-%d %H:%M"
+                    ),  # Le quité los segundos para que se vea mejor en pantalla
+                    "idioma": fila[6],
                 }
             )
 
@@ -150,7 +199,10 @@ def actualizar_funcion(id_cartelera):
 
         # Validamos si realmente se actualizó algo
         if cur.rowcount == 0:
-            return jsonify({"error": "No se realizo ningún cambio para actualizarla "}), 404
+            return (
+                jsonify({"error": "No se realizo ningún cambio para actualizarla "}),
+                404,
+            )
 
         cur.close()
         return (
@@ -323,4 +375,162 @@ def buscar_por_cine():
 
         return jsonify({"cartelera": funciones}), 200
     except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# -------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------- CINES
+# --------------------------------------------------------------------------------------------
+# ==========================================
+# OBTENER TODOS LOS CINES (GET)
+# ==========================================
+# ==========================================
+# OBTENER TODOS LOS CINES (GET)
+# ==========================================
+@cartelera_bp.route("/cines", methods=["GET"])
+@require_api_key
+def obtener_cines():
+    # Asegúrate de importar tu instancia de mysql correspondiente (ej: app_cines)
+    from app_cartelera import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        # 1. ¡Agregamos linkWeb a la consulta SQL!
+        cur.execute(
+            "SELECT id_cine, nombreCine, direccionCine, ciudadCine, linkWeb FROM cines"
+        )
+        datos = cur.fetchall()
+        cur.close()
+
+        lista_cines = []
+        for fila in datos:
+            lista_cines.append(
+                {
+                    "id_cine": fila[0],
+                    "nombreCine": fila[1],
+                    "direccionCine": fila[2],
+                    "ciudadCine": fila[3],
+                    "linkWeb": fila[
+                        4
+                    ],  # 2. ¡Lo agregamos al paquete que se envía a Vue!
+                }
+            )
+        return jsonify({"cines": lista_cines}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# AGREGAR NUEVO CINE (POST)
+# ==========================================
+@cartelera_bp.route("/cines", methods=["POST"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
+def agregar_cine():
+    from app_cartelera import mysql
+
+    datos = request.json
+
+    if not datos or not all(k in datos for k in ("nombreCine",)):
+        return jsonify({"error": "El nombre del cine es obligatorio"}), 400
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute(
+            """
+            INSERT INTO cines (nombreCine, direccionCine, ciudadCine, linkWeb) 
+            VALUES (%s, %s, %s, %s)
+            """,
+            (
+                datos.get("nombreCine"),
+                datos.get("direccionCine", ""),
+                datos.get("ciudadCine", ""),
+                datos.get("linkWeb", ""),
+            ),
+        )
+        mysql.connection.commit()
+        cur.close()
+        return jsonify({"mensaje": "Cine agregado exitosamente"}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# ACTUALIZAR CINE (PUT)
+# ==========================================
+@cartelera_bp.route("/cines/<int:id_cine>", methods=["PUT"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
+def actualizar_cine(id_cine):
+    from app_cartelera import mysql
+
+    datos = request.json
+
+    if not datos or not all(k in datos for k in ("nombreCine",)):
+        return jsonify({"error": "El nombre del cine es obligatorio"}), 400
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute(
+            """
+            UPDATE cines 
+            SET nombreCine=%s, direccionCine=%s, ciudadCine=%s, linkWeb=%s 
+            WHERE id_cine=%s
+            """,
+            (
+                datos.get("nombreCine"),
+                datos.get("direccionCine", ""),
+                datos.get("ciudadCine", ""),
+                datos.get("linkWeb", ""),  # <-- AQUÍ AGREGAMOS EL LINK
+                id_cine,
+            ),
+        )
+        mysql.connection.commit()
+
+        # Recuerda: Si mandas los mismos datos sin cambiar nada, rowcount será 0
+        if cur.rowcount == 0:
+            return (
+                jsonify({"error": "No se realizó ningún cambio o el cine no existe"}),
+                404,
+            )
+
+        cur.close()
+        return jsonify({"mensaje": "Cine actualizado correctamente"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# ELIMINAR CINE (DELETE)
+# ==========================================
+@cartelera_bp.route("/cines/<int:id_cine>", methods=["DELETE"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
+def eliminar_cine(id_cine):
+    from app_cartelera import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("DELETE FROM cines WHERE id_cine = %s", (id_cine,))
+        mysql.connection.commit()
+
+        if cur.rowcount == 0:
+            return jsonify({"error": "El cine que intentas borrar no existe"}), 404
+
+        cur.close()
+        return jsonify({"mensaje": "Cine eliminado exitosamente"}), 200
+    except Exception as e:
+        # Controlar error por si hay carteleras atadas a este cine
+        if "foreign key constraint fails" in str(e).lower():
+            return (
+                jsonify(
+                    {
+                        "error": "No puedes eliminar este cine porque tiene funciones programadas en la cartelera."
+                    }
+                ),
+                400,
+            )
         return jsonify({"error": str(e)}), 500

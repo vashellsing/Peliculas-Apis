@@ -1,42 +1,22 @@
 <script setup>
+// ==========================================
+// HERRAMIENTAS NECESARIAS
+// ==========================================
 import { ref, onMounted, computed } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
 
+// Para saber en que direccion web estamos y sacar el ID de la pelicula
 const route = useRoute();
 
-
+// ==========================================
+// DATOS PRINCIPALES DE LA PELICULA
+// ==========================================
 const pelicula = ref(null);
 const cargando = ref(true);
 const error = ref(null);
 
-// Variables para el Modal del Trailer
-const mostrarModal = ref(false);
-
-
-const funcionesDisponibles = ref([
-  {
-    id_cartelera: 1,
-    nombreCine: "Cine Colombia",
-    ciudadCine: "Popayán",
-    direccionCine: "C.C. Campanario",
-    fecha_hora: "2026-05-20 a las 18:30",
-    idioma: "Doblada al Espanol",
-  }
-]);
-
-// Convertimos el link para que funcione a embed
-const trailerEmbedUrl = computed(() => {
-  if (!pelicula.value || !pelicula.value.trailer) return "";
-
-  // Extraemos el ID del video de la URL normal
-  const urlParams = new URLSearchParams(new URL(pelicula.value.trailer).search);
-  const videoId = urlParams.get("v");
-
-  // Le agregamos ?autoplay=1 para que se reproduzca solito al abrir el modal
-  return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : "";
-});
-
+// Funcion para traer toda la informacion de la pelicula
 const cargarDetalles = async () => {
   try {
     const configuracion = {
@@ -50,47 +30,431 @@ const cargarDetalles = async () => {
     );
     pelicula.value = respuesta.data.pelicula;
   } catch (err) {
-    console.error("Error al cargar la película:", err);
-    error.value = "No pudimos encontrar esta película.";
+    console.error("Error al cargar la pelicula:", err);
+    error.value = "No pudimos encontrar esta pelicula.";
   } finally {
     cargando.value = false;
   }
 };
 
-// Abre el modal en lugar de salir de la vista
+// ==========================================
+// VENTANAS DE MENSAJES Y AVISOS
+// ==========================================
+const textoModalMensaje = ref("");
+const tipoModalMensaje = ref("exito"); 
+const mostrarModalMensaje = ref(false);
+
+const abrirModalMensaje = (texto, tipo = "exito") => {
+  textoModalMensaje.value = texto;
+  tipoModalMensaje.value = tipo;
+  mostrarModalMensaje.value = true;
+};
+
+const cerrarModalMensaje = () => {
+  mostrarModalMensaje.value = false;
+};
+
+// ==========================================
+// REPRODUCTOR DEL TRAILER
+// ==========================================
+const mostrarModal = ref(false);
+
+// Acomodamos el enlace del video para que se pueda ver directo en la pagina
+const trailerEmbedUrl = computed(() => {
+  if (!pelicula.value || !pelicula.value.trailer) return "";
+
+  // Sacamos el codigo secreto del video de Youtube
+  const urlParams = new URLSearchParams(new URL(pelicula.value.trailer).search);
+  const videoId = urlParams.get("v");
+
+  // Le decimos que arranque a reproducirse solito cuando se abra
+  return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1` : "";
+});
+
+// Abre la pantalla oscura para ver el video
 const abrirTrailer = () => {
   if (pelicula.value.trailer) {
     mostrarModal.value = true;
   } else {
-    alert("Lo sentimos, no hay tráiler disponible para esta película.");
+    alert("Lo sentimos, no hay trailer disponible para esta pelicula.");
   }
 };
 
-// Cierra el modal
+// Cierra la pantalla del video
 const cerrarModal = () => {
   mostrarModal.value = false;
 };
 
-const comentarios = ref([
-  {
-    id: 1,
-    usuario: "Cinefilo99",
-    titulo: "Una montaña rusa de emociones",
-    texto:
-      "Lloré, reí y grité en el cine. El manejo de la nostalgia es perfecto.",
-    fecha: "15 Dic 2021",
-  },
-  {
-    id: 2,
-    usuario: "MarvelFan",
-    titulo: "Puro fanservice, pero del bueno",
-    texto: "Logra integrar todos los elementos clásicos sin perder el enfoque.",
-    fecha: "16 Dic 2021",
-  },
-]);
+// ==========================================
+// SISTEMA DE FAVORITOS
+// ==========================================
+const esFavorito = ref(false);
+const procesandoFavorito = ref(false);
 
+// Revisa si el usuario ya tenia esta pelicula guardada
+const verificarSiEsFavorito = async () => {
+  const token = localStorage.getItem("token_cine");
+  if (!token) return;
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    // Pedimos la lista completa de favoritos del usuario
+    const respuesta = await axios.get(
+      "http://127.0.0.1:5000/favoritos/mio",
+      configuracion,
+    );
+    const favoritosUsuario = respuesta.data.favoritos || [];
+    const idActual = Number(route.params.id);
+
+    // Buscamos si esta pelicula esta en esa lista
+    const yaEsta = favoritosUsuario.some((fav) => fav.id_pelicula === idActual);
+    if (yaEsta) {
+      esFavorito.value = true;
+    }
+  } catch (err) {
+    console.error("Error verificando favoritos:", err);
+  }
+};
+
+// Funcion para agregar (esta la tenias en tu codigo original)
+const agregarAFavoritos = async () => {
+  const token = localStorage.getItem("token_cine");
+  if (!token) {
+    alert("Debes iniciar sesion para anadir peliculas a favoritos.");
+    return;
+  }
+
+  procesandoFavorito.value = true;
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    const payload = { id_pelicula: Number(route.params.id) };
+    await axios.post("http://127.0.0.1:5000/favoritos", payload, configuracion);
+
+    esFavorito.value = true;
+  } catch (err) {
+    console.error("Error al anadir a favoritos:", err);
+    if (
+      err.response &&
+      (err.response.status === 400 || err.response.status === 409)
+    ) {
+      esFavorito.value = true;
+    } else {
+      alert(
+        err.response?.data?.error || "Hubo un problema al anadir a favoritos.",
+      );
+    }
+  } finally {
+    procesandoFavorito.value = false;
+  }
+};
+
+// Funcion principal del boton del corazon (quita y pone de favoritos)
+const alternarFavorito = async () => {
+  const token = localStorage.getItem("token_cine");
+  if (!token) {
+    abrirModalMensaje(
+      "Debes iniciar sesion para interactuar con tus favoritos.",
+      "error",
+    );
+    return;
+  }
+
+  procesandoFavorito.value = true;
+  const id_pelicula = Number(route.params.id);
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    if (esFavorito.value) {
+      // Si ya estaba guardada, le decimos al servidor que la borre
+      await axios.delete(
+        `http://127.0.0.1:5000/favoritos/${id_pelicula}`,
+        configuracion,
+      );
+      esFavorito.value = false;
+      abrirModalMensaje(
+        "La pelicula fue eliminada de tu lista de favoritos.",
+        "exito",
+      );
+    } else {
+      // Si no estaba guardada, le decimos que la guarde
+      await axios.post(
+        "http://127.0.0.1:5000/favoritos",
+        { id_pelicula },
+        configuracion,
+      );
+      esFavorito.value = true;
+      abrirModalMensaje("¡Pelicula anadida a favoritos exitosamente!", "exito");
+    }
+  } catch (err) {
+    console.error("Error al modificar favoritos:", err);
+    abrirModalMensaje(
+      err.response?.data?.error ||
+        "Hubo un problema de conexion con el servidor.",
+      "error",
+    );
+  } finally {
+    procesandoFavorito.value = false;
+  }
+};
+
+// ==========================================
+// FUNCIONES Y HORARIOS (CARTELERA)
+// ==========================================
+const funcionesDisponibles = ref([]);
+
+const cargarCartelera = async () => {
+  try {
+    const configuracion = {
+      headers: { "x-api-key": "mi_super_api_key_fija_123" },
+    };
+    const idUrl = route.params.id;
+
+    // Buscamos los horarios en el servidor de cartelera
+    const respuesta = await axios.get(
+      `http://127.0.0.1:5002/cartelera/pelicula/${idUrl}`,
+      configuracion,
+    );
+
+    funcionesDisponibles.value = respuesta.data.cartelera;
+  } catch (err) {
+    console.error("Error al cargar la cartelera:", err);
+    funcionesDisponibles.value = [];
+  }
+};
+
+// ==========================================
+// LECTURA DE COMENTARIOS Y RESENAS
+// ==========================================
+const comentarios = ref([]);
+
+const cargarComentarios = async () => {
+  try {
+    const configuracion = {
+      headers: { "x-api-key": "mi_super_api_key_fija_123" },
+    };
+    const idUrl = route.params.id;
+
+    // Buscamos las opiniones de la gente
+    const respuesta = await axios.get(
+      `http://127.0.0.1:5003/resenas/${idUrl}`,
+      configuracion,
+    );
+    comentarios.value = respuesta.data.comentarios;
+  } catch (err) {
+    console.error("Error al cargar los comentarios:", err);
+  }
+};
+
+// Dibuja las estrellitas llenas y vacias segun la nota
+const mostrarEstrellas = (calificacion) => {
+  const puntos = Number(calificacion) || 0;
+  return "★".repeat(puntos) + "☆".repeat(5 - puntos);
+};
+
+// ==========================================
+// ESCRIBIR Y EDITAR COMENTARIOS
+// ==========================================
+const nuevoComentario = ref({
+  titulo: "",
+  comentario: "",
+  calificacion: 5,
+});
+
+const mensajeFormulario = ref({ texto: "", tipo: "" });
+const enviandoComentario = ref(false);
+const mostrarFormulario = ref(false);
+const editandoId = ref(null);
+
+// Muestra o esconde la cajita para escribir
+const alternarFormulario = () => {
+  mostrarFormulario.value = !mostrarFormulario.value;
+  if (!mostrarFormulario.value) {
+    limpiarFormulario();
+  }
+};
+
+// Vacia las cajas de texto
+const limpiarFormulario = () => {
+  nuevoComentario.value = { titulo: "", comentario: "", calificacion: 5 };
+  editandoId.value = null;
+  mensajeFormulario.value = { texto: "", tipo: "" };
+};
+
+// Llena la caja de texto con lo que ya habias escrito para poder corregirlo
+const prepararEdicion = (comentario) => {
+  nuevoComentario.value = {
+    titulo: comentario.titulo,
+    comentario: comentario.texto,
+    calificacion: comentario.calificacion,
+  };
+  editandoId.value = comentario.id;
+  mostrarFormulario.value = true;
+
+  // Desliza la pantalla hasta donde esta la caja de texto
+  window.scrollTo({
+    top: document.querySelector(".formulario-comentario")?.offsetTop,
+    behavior: "smooth",
+  });
+};
+
+// Envia tu opinion al servidor (sirve para nuevos y para editados)
+const enviarResena = async () => {
+  mensajeFormulario.value = { texto: "", tipo: "" };
+  const token = localStorage.getItem("token_cine");
+
+  if (!token) {
+    mensajeFormulario.value = {
+      texto: "Debes iniciar sesion para dejar una resena.",
+      tipo: "error",
+    };
+    return;
+  }
+
+  enviandoComentario.value = true;
+
+  try {
+    const configuracion = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    const datosAEnviar = {
+      id_pelicula: Number(route.params.id),
+      titulo: nuevoComentario.value.titulo,
+      comentario: nuevoComentario.value.comentario,
+      calificacion: nuevoComentario.value.calificacion,
+    };
+
+    if (editandoId.value) {
+      // Si estamos corrigiendo un comentario viejo
+      await axios.put(
+        `http://127.0.0.1:5003/resenas/${editandoId.value}`,
+        datosAEnviar,
+        configuracion,
+      );
+      mensajeFormulario.value = {
+        texto: "¡Comentario actualizado con exito!",
+        tipo: "exito",
+      };
+    } else {
+      // Si es un comentario totalmente nuevo
+      await axios.post(
+        "http://127.0.0.1:5003/resenas",
+        datosAEnviar,
+        configuracion,
+      );
+      mensajeFormulario.value = {
+        texto: "¡Comentario publicado con exito!",
+        tipo: "exito",
+      };
+    }
+
+    limpiarFormulario();
+    mostrarFormulario.value = false;
+    await cargarComentarios(); // Actualizamos la lista de comentarios
+  } catch (err) {
+    console.error(err);
+    const mensajeError =
+      err.response?.data?.error || "Ocurrio un error al enviar tu resena.";
+    mensajeFormulario.value = { texto: mensajeError, tipo: "error" };
+  } finally {
+    enviandoComentario.value = false;
+  }
+};
+
+// ==========================================
+// BORRAR COMENTARIOS
+// ==========================================
+const mostrarModalEliminar = ref(false);
+const comentarioAEliminar = ref(null);
+
+// Abre el cuadrito que te pregunta si estas seguro de borrar
+const confirmarEliminacion = (id_comentario) => {
+  comentarioAEliminar.value = id_comentario;
+  mostrarModalEliminar.value = true;
+};
+
+// Cierra el cuadrito sin borrar nada
+const cerrarModalEliminar = () => {
+  mostrarModalEliminar.value = false;
+  comentarioAEliminar.value = null;
+};
+
+// Le avisa al servidor que borre la opinion para siempre
+const ejecutarEliminacion = async () => {
+  if (!comentarioAEliminar.value) return;
+
+  const token = localStorage.getItem("token_cine");
+  try {
+    const config = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    await axios.delete(
+      `http://127.0.0.1:5003/resenas/${comentarioAEliminar.value}`,
+      config,
+    );
+    await cargarComentarios();
+    cerrarModalEliminar();
+  } catch (err) {
+    console.error("Error eliminando comentario", err);
+    alert(err.response?.data?.error || "No se pudo eliminar el comentario");
+  }
+};
+
+// ==========================================
+// IDENTIFICACION DEL USUARIO
+// ==========================================
+const usuarioActualId = ref(null);
+
+// Averigua quien esta usando la pagina leyendo su pase de entrada
+const obtenerUsuarioDeToken = () => {
+  const token = localStorage.getItem("token_cine");
+  if (token) {
+    try {
+      // Desciframos el pase para leer el numero de identificacion del usuario
+      const datosDelPase = JSON.parse(atob(token.split(".")[1]));
+      usuarioActualId.value = datosDelPase.id;
+    } catch (e) {
+      console.error("Error al descifrar el pase", e);
+    }
+  }
+};
+
+// ==========================================
+// EVENTOS AL ABRIR LA PAGINA
+// ==========================================
+// Apenas se carga la pantalla, le pedimos que haga todas estas tareas
 onMounted(() => {
   cargarDetalles();
+  verificarSiEsFavorito();
+  cargarComentarios();
+  cargarCartelera();
+  obtenerUsuarioDeToken();
 });
 </script>
 
@@ -138,11 +502,26 @@ onMounted(() => {
               <button @click="abrirTrailer" class="btn-primario">
                 <span>▶</span> Ver Tráiler
               </button>
-              <RouterLink to="/favoritos" class="btn-secundario"
-                ><span>❤️</span> Añadir a Favoritos</RouterLink
+              <button
+                @click="alternarFavorito"
+                class="btn-secundario btn-favorito"
+                :class="{ 'favorito-activo': esFavorito }"
+                :disabled="procesandoFavorito"
               >
+                <span>{{ esFavorito ? "❤️" : "🤍" }}</span>
+                <span class="texto-btn-fav">
+                  {{
+                    procesandoFavorito
+                      ? "Procesando..."
+                      : esFavorito
+                        ? "En tus Favoritos"
+                        : "Añadir a Favoritos"
+                  }}
+                </span>
+              </button>
               <div class="calificacion">
-                <span class="estrella">★</span> 4.5 / 5.0
+                <span class="estrella">★</span>
+                {{ Number(pelicula.calificacion).toFixed(1) }} / 5.0
               </div>
             </div>
           </div>
@@ -183,7 +562,12 @@ onMounted(() => {
                 </div>
               </div>
 
-              <a class="btn-boletos" href="https://www.cinecolombia.com/" target="_blank">Ir al cine</a>
+              <a
+                class="btn-boletos"
+                href="https://www.cinecolombia.com/"
+                target="_blank"
+                >Ir al cine</a
+              >
             </div>
           </div>
 
@@ -227,6 +611,72 @@ onMounted(() => {
           <h2 class="titulo-seccion text-center">
             Comentarios de la Comunidad
           </h2>
+
+          <div class="acciones-cabecera-comentarios">
+            <button @click="alternarFormulario" class="btn-primario">
+              {{ mostrarFormulario ? "❌ Cancelar" : "✍️ Agregar comentario" }}
+            </button>
+          </div>
+
+          <div v-if="mostrarFormulario" class="formulario-comentario">
+            <h3>{{ editandoId ? "Editar tu reseña" : "Deja tu reseña" }}</h3>
+
+            <div
+              v-if="mensajeFormulario.texto"
+              :class="['alerta', mensajeFormulario.tipo]"
+            >
+              {{ mensajeFormulario.texto }}
+            </div>
+
+            <form @submit.prevent="enviarResena">
+              <div class="grupo-input">
+                <label>Calificación:</label>
+                <select v-model="nuevoComentario.calificacion" required>
+                  <option value="5">⭐⭐⭐⭐⭐ (5) ¡Excelente!</option>
+                  <option value="4">⭐⭐⭐⭐ (4) Muy buena</option>
+                  <option value="3">⭐⭐⭐ (3) Buena</option>
+                  <option value="2">⭐⭐ (2) Regular</option>
+                  <option value="1">⭐ (1) Mala</option>
+                </select>
+              </div>
+
+              <div class="grupo-input">
+                <label>Título de tu reseña:</label>
+                <input
+                  type="text"
+                  v-model="nuevoComentario.titulo"
+                  placeholder="Ej: Me encantó esta película"
+                  required
+                  maxlength="150"
+                />
+              </div>
+
+              <div class="grupo-input">
+                <label>Comentario:</label>
+                <textarea
+                  v-model="nuevoComentario.comentario"
+                  placeholder="¿Qué te pareció la película?..."
+                  rows="4"
+                  required
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                class="btn-primario btn-enviar"
+                :disabled="enviandoComentario"
+              >
+                {{
+                  enviandoComentario
+                    ? "Guardando..."
+                    : editandoId
+                      ? "Guardar Cambios"
+                      : "Publicar Reseña"
+                }}
+              </button>
+            </form>
+          </div>
+
           <div class="lista-comentarios">
             <div
               class="comentario-item"
@@ -234,14 +684,41 @@ onMounted(() => {
               :key="comentario.id"
             >
               <div class="cabecera-comentario">
-                <h4 class="titulo-comentario">{{ comentario.titulo }}</h4>
+                <div class="info-cabecera">
+                  <h4 class="titulo-comentario">{{ comentario.titulo }}</h4>
+                  <span
+                    class="estrellas-comentario"
+                    :title="'Calificación: ' + comentario.calificacion + '/5'"
+                  >
+                    {{ mostrarEstrellas(comentario.calificacion) }}
+                  </span>
+                </div>
                 <span class="fecha">{{ comentario.fecha }}</span>
               </div>
               <p class="texto-comentario">{{ comentario.texto }}</p>
+
               <div class="pie-comentario">
                 <span class="usuario"
                   >Por: <strong>@{{ comentario.usuario }}</strong></span
                 >
+
+                <div
+                  class="acciones-propias"
+                  v-if="usuarioActualId === comentario.id_usuario"
+                >
+                  <button
+                    class="btn-accion editar"
+                    @click="prepararEdicion(comentario)"
+                  >
+                    ✏️ Editar
+                  </button>
+                  <button
+                    class="btn-accion eliminar"
+                    @click="confirmarEliminacion(comentario.id)"
+                  >
+                    🗑️ Eliminar
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -263,11 +740,49 @@ onMounted(() => {
         </div>
       </div>
     </div>
+    <div
+      v-if="mostrarModalEliminar"
+      class="modal-overlay"
+      @click.self="cerrarModalEliminar"
+    >
+      <div class="modal-confirmacion">
+        <h3>¿Eliminar comentario?</h3>
+        <p>
+          Esta acción no se puede deshacer. ¿Estás seguro de que quieres borrar
+          tu reseña?
+        </p>
+        <div class="acciones-modal">
+          <button class="btn-secundario" @click="cerrarModalEliminar">
+            Cancelar
+          </button>
+          <button class="btn-primario btn-peligro" @click="ejecutarEliminacion">
+            Sí, eliminar
+          </button>
+        </div>
+      </div>
+      <div
+        v-if="mostrarModalMensaje"
+        class="modal-overlay"
+        @click.self="cerrarModalMensaje"
+      >
+        <div class="modal-confirmacion" :class="tipoModalMensaje">
+          <h3 v-if="tipoModalMensaje === 'exito'">¡Operación Exitosa!</h3>
+          <h3 v-else>Ha ocurrido un error</h3>
+
+          <p>{{ textoModalMensaje }}</p>
+
+          <div class="acciones-modal">
+            <button class="btn-primario" @click="cerrarModalMensaje">
+              Entendido
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
-
 .vista-detalle {
   font-family: sans-serif;
   color: #333;
@@ -651,5 +1166,195 @@ button:hover {
   left: 0;
   width: 100%;
   height: 100%;
+}
+
+/* ESTILOS PARA EL FORMULARIO DE COMENTARIOS */
+.formulario-comentario {
+  background-color: #f8fafc;
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 2rem;
+}
+.formulario-comentario h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  color: #1a1a1a;
+}
+.grupo-input {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+.grupo-input label {
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+  color: #333;
+  font-size: 0.9rem;
+}
+.grupo-input input,
+.grupo-input select,
+.grupo-input textarea {
+  padding: 0.8rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 1rem;
+}
+.btn-enviar {
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+.alerta {
+  padding: 0.8rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  font-weight: bold;
+  text-align: center;
+}
+.alerta.error {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #f87171;
+}
+.alerta.exito {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #4ade80;
+}
+
+/* NUEVOS ESTILOS PARA ACCIONES DE COMENTARIOS */
+.acciones-cabecera-comentarios {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+.pie-comentario {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid #f1f1f1;
+}
+.acciones-propias {
+  display: flex;
+  gap: 0.5rem;
+}
+.btn-accion {
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+.btn-accion.editar {
+  color: #0ea5e9;
+  background-color: #e0f2fe;
+}
+.btn-accion.editar:hover {
+  background-color: #bae6fd;
+}
+.btn-accion.eliminar {
+  color: #e50914;
+  background-color: #fee2e2;
+}
+.btn-accion.eliminar:hover {
+  background-color: #fecaca;
+}
+
+/* ESTILOS PARA EL MODAL DE CONFIRMACIÓN */
+.modal-confirmacion {
+  background-color: white;
+  padding: 2.5rem 2rem;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  /* Aseguramos que quede por encima del overlay */
+  position: relative;
+  z-index: 1001;
+}
+
+.modal-confirmacion h3 {
+  margin-top: 0;
+  color: #1a1a1a;
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.modal-confirmacion p {
+  color: #555;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+  font-size: 1rem;
+}
+
+.acciones-modal {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.btn-peligro {
+  background-color: #e50914;
+}
+
+.btn-peligro:hover {
+  background-color: #b8070f;
+}
+
+/* ESTILOS PARA LAS ESTRELLAS EN LOS COMENTARIOS */
+.info-cabecera {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.estrellas-comentario {
+  color: #f5c518; /* Amarillo clásico de cine */
+  font-size: 1.1rem;
+  letter-spacing: 2px; /* Un poco de espacio entre estrellas */
+}
+
+/* --- ESTILOS PARA EL BOTON DE FAVORITOS (TOGGLE) --- */
+.btn-favorito {
+  transition: all 0.3s ease;
+  min-width: 220px; /* Evita que el botón cambie de tamaño bruscamente al cambiar el texto */
+  justify-content: center;
+}
+
+.btn-favorito.favorito-activo {
+  background-color: #fef2f2;
+  border-color: #fca5a5;
+  color: #e50914;
+}
+
+/* Efecto Hover: Al pasar el mouse si ya es favorito, muestra la intención de eliminar */
+.btn-favorito.favorito-activo:hover {
+  background-color: #fee2e2;
+  border-color: #ef4444;
+}
+
+.btn-favorito.favorito-activo:hover .texto-btn-fav::after {
+  content: " (Quitar)";
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.btn-favorito:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* MODAL DE ERROR (Variante de colores) */
+.modal-confirmacion.error h3 {
+  color: #e50914;
 }
 </style>

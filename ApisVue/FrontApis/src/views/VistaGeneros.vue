@@ -1,5 +1,10 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+import axios from "axios";
+
+// ==========================================
+// nUESTRA LISTA FIJA DE GENEROS POR SI LA BASE DE DATOS NO TIENE ALGUNA XD
+// ==========================================
 
 const generos = ref([
   {
@@ -7,56 +12,93 @@ const generos = ref([
     titulo: "Acción",
     imagenUrl:
       "https://image.tmdb.org/t/p/w500/7WsyChQLEftFiDOVTGkv3hFpyyt.jpg",
-  }, // Avengers
+  },
   {
     nombre: "Comedia",
     titulo: "Comedia",
     imagenUrl:
       "https://image.tmdb.org/t/p/w500/8kOWDBK6XlPUzckuHDo3wwVRFwt.jpg",
-  }, // Rick and Morty / Superbad vibe
+  },
   {
     nombre: "Drama",
     titulo: "Drama",
     imagenUrl:
       "https://image.tmdb.org/t/p/w500/rSPw7tgCH9c6NqICZef4kZjFOQ5.jpg",
-  }, // El Padrino
+  },
   {
     nombre: "Ciencia Ficcion",
     titulo: "Ciencia Ficción",
     imagenUrl:
       "https://image.tmdb.org/t/p/original/d1QKiYtceF3GDtxvTFXFAqwwah9.jpg",
-  }, // Interestelar
+  },
   {
     nombre: "Terror",
     titulo: "Terror",
     imagenUrl:
       "https://image.tmdb.org/t/p/original/ecKQlAEG95k62SMGhvX83oEqANK.jpg",
-  }, // El Conjuro / IT
+  },
   {
     nombre: "Romance",
     titulo: "Romance",
     imagenUrl:
       "https://image.tmdb.org/t/p/original/rBTJZrf5UWaxzg5YJd2eqpeaSvm.jpg",
-  }, // Titanic
+  },
   {
     nombre: "Animacion",
     titulo: "Animación",
     imagenUrl:
       "https://image.tmdb.org/t/p/w500/qA5kPYZA7FkVvqcEfJRoOy4kpHg.jpg",
-  }, // Spider-Verse
+  },
   {
     nombre: "Fantasia",
     titulo: "Fantasía",
     imagenUrl:
       "https://image.tmdb.org/t/p/original/pNeqCBGdEOhdaMTPlwdy1oJLG75.jpg",
-  }, // Harry potter
+  },
   {
     nombre: "Documental",
     titulo: "Documental",
     imagenUrl:
       "https://image.tmdb.org/t/p/original/awIrfoe6e1SUh5bCSI7cbcLdpEs.jpg",
-  }, // Nuestro Planeta
+  },
 ]);
+
+// ==========================================
+// FUNCION PARA BUSCAR POSTERS DINAMICOS
+// ==========================================
+const cargarImagenesDePeliculas = () => {
+  const configuracion = {
+    headers: { "x-api-key": "mi_super_api_key_fija_123" },
+  };
+
+  // Recorremos cada genero uno por uno
+  generos.value.forEach(async (genero) => {
+    try {
+      // Le pedimos a Flask las peliculas de este genero en especifico
+      const url = `http://127.0.0.1:5000/peliculas/categoria?q=${genero.nombre}`;
+      const respuesta = await axios.get(url, configuracion);
+
+      // Si nos devolvio peliculas y la lista no esta vacia...
+      const peliculasEncontradas = respuesta.data.peliculas;
+      if (peliculasEncontradas && peliculasEncontradas.length > 0) {
+        // Elegimos una pelicula al azar de las que nos llegaron
+        const numeroAlAzar = Math.floor(
+          Math.random() * peliculasEncontradas.length,
+        );
+        const peliculaElegida = peliculasEncontradas[numeroAlAzar];
+
+        // Cambiamos la imagen del "Plan B" por el poster de nuestra pelicula
+        if (peliculaElegida.poster) {
+          genero.imagenUrl = peliculaElegida.poster;
+        }
+      }
+    } catch (error) {}
+  });
+};
+
+onMounted(() => {
+  cargarImagenesDePeliculas();
+});
 </script>
 
 <template>

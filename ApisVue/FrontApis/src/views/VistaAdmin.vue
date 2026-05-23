@@ -1,62 +1,35 @@
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
+import axios from "axios";
 
+// Esta variable nos dice en que pestana esta el administrador (peliculas, series, etc)
 const menuActivo = ref("peliculas");
 
-// --- SIMULACIÓN DE BASE DE DATOS ---
-const datosPeliculas = ref([
-  {
-    id_pelicula: 1,
-    titulo: "Spider-Man: No Way Home",
-    titulo_originalPelicula: "Spider-Man: No Way Home",
-    sinopsis:
-      "Spider-Man es desenmascarado y ya no puede separar su vida normal de la de superhéroe.",
-    anio: 2021,
-    actoresPelicula: "Tom Holland, Zendaya, Benedict Cumberbatch",
-    generoPelicula: "Accion",
-    idiomaPelicula: "Ingles",
-    poster:
-      "https://www.themoviedb.org/t/p/w600_and_h900_face/y3m8fNP6WnGemSPpEXRLyAaTSA1.jpg",
-    lema: "El multiverso se desata",
-    trailer: "https://www.youtube.com/watch?v=Sn68AF2MGo8r",
-  },
-]);
+// ==========================================
+// CONTROL DE PAGINAS (PAGINACION)
+// ==========================================
+const paginaActual = ref(1);
+const elementosPorPagina = 20;
 
-const datosSeries = ref([
-  {
-    id_serie: 1,
-    tituloSerie: "Breaking Bad",
-    titulo_originalSerie: "Breaking Bad",
-    sinopsisSerie:
-      "Un profesor de química con cáncer terminal se asocia con un exalumno para fabricar y vender metanfetamina.",
-    anio_lanzamientoSerie: 2008,
-    temporadasSerie: 5,
-    actoresSerie: "Bryan Cranston, Aaron Paul",
-    generoSerie: "Drama",
-    idiomaSerie: "Ingles",
-  },
-]);
+// Si el administrador cambia de seccion, lo regresamos a la pagina uno automaticamente
+watch(menuActivo, () => {
+  paginaActual.value = 1;
+});
 
-const datosCines = ref([
-  {
-    id_cine: 1,
-    nombreCine: "Cine Colombia",
-    direccionCine: "C.C. Campanario",
-    ciudadCine: "Popayán",
-  },
-]);
+// ==========================================
+// CAJONES PARA GUARDAR LA INFORMACION
+// ==========================================
+// Aqui guardaremos lo que nos entregue el servidor
+const datosPeliculas = ref([]);
+const datosSeries = ref([]);
+const datosCines = ref([]);
+const datosCarteleras = ref([]);
 
-const datosCarteleras = ref([
-  {
-    id_cartelera: 1,
-    id_peliculaCartelera: 1,
-    id_cineCartelera: 1,
-    fecha_horaCartelera: "2024-05-20T18:30",
-    idioma_proyeccionCartelera: "Doblada al Espanol",
-  },
-]);
+// Atajos para que la pantalla encuentre las listas facilmente
+const peliculas = computed(() => datosPeliculas.value);
+const cines = computed(() => datosCines.value);
 
-// --- HELPER PARA SABER QUÉ ARRAY ESTAMOS EDITANDO ---
+// Herramienta para saber cual de los cajones estamos mirando en este momento
 const getArrayActivo = () => {
   if (menuActivo.value === "peliculas") return datosPeliculas;
   if (menuActivo.value === "series") return datosSeries;
@@ -64,48 +37,163 @@ const getArrayActivo = () => {
   if (menuActivo.value === "cartelera") return datosCarteleras;
 };
 
-// Helper para saber cómo se llama el "ID" de la sección actual
-const getIdKey = () => {
-  if (menuActivo.value === "peliculas") return "id_pelicula";
-  if (menuActivo.value === "series") return "id_serie";
-  if (menuActivo.value === "cines") return "id_cine";
-  if (menuActivo.value === "cartelera") return "id_cartelera";
-};
+// Herramienta para saber el nombre de la identificacion segun la seccion
+// const getIdKey = () => {
+//   if (menuActivo.value === "peliculas") return "id";
+//   if (menuActivo.value === "series") return "id";
+//   if (menuActivo.value === "cines") return "id_cine";
+//   if (menuActivo.value === "cartelera") return "id_cartelera";
+// };
 
+// La lista completa de lo que estamos viendo
 const listaActual = computed(() => getArrayActivo().value);
 
-// --- LÓGICA DEL MODAL DE FORMULARIO ---
-const modalVisible = ref(false);
-const esEdicion = ref(false);
-const formulario = ref({});
+// Recortamos la lista completa para mostrar solo 20 elementos a la vez
+const listaPaginada = computed(() => {
+  const inicio = (paginaActual.value - 1) * elementosPorPagina;
+  const fin = inicio + elementosPorPagina;
+  return listaActual.value.slice(inicio, fin);
+});
 
+// Calculamos cuantas paginas en total se necesitan
+const totalPaginas = computed(() => {
+  return Math.ceil(listaActual.value.length / elementosPorPagina);
+});
+
+// ==========================================
+// TRAER INFORMACION DEL SERVIDOR
+// ==========================================
+const cargarPeliculas = async () => {
+  try {
+    const paseDeSeguridad = localStorage.getItem("token_cine");
+    if (!paseDeSeguridad) return;
+
+    const opciones = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${paseDeSeguridad}`,
+      },
+    };
+
+    const direccion = "http://127.0.0.1:5000/peliculas";
+    const respuesta = await axios.get(direccion, opciones);
+    datosPeliculas.value = respuesta.data.peliculas;
+  } catch (problema) {
+    console.error("Fallo al traer las peliculas:", problema);
+  }
+};
+
+const cargarSeries = async () => {
+  try {
+    const paseDeSeguridad = localStorage.getItem("token_cine");
+    if (!paseDeSeguridad) return;
+
+    const opciones = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${paseDeSeguridad}`,
+      },
+    };
+
+    const direccion = "http://127.0.0.1:5001/series";
+    const respuesta = await axios.get(direccion, opciones);
+    datosSeries.value = respuesta.data.series;
+  } catch (problema) {
+    console.error("Fallo al traer las series:", problema);
+  }
+};
+
+const cargarCines = async () => {
+  try {
+    const paseDeSeguridad = localStorage.getItem("token_cine");
+    const opciones = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: paseDeSeguridad ? `Bearer ${paseDeSeguridad}` : "",
+      },
+    };
+
+    const direccion = "http://127.0.0.1:5002/cines";
+    const respuesta = await axios.get(direccion, opciones);
+    datosCines.value = respuesta.data.cines;
+  } catch (problema) {
+    console.error("Fallo al traer los cines:", problema);
+  }
+};
+
+const cargarCarteleras = async () => {
+  try {
+    const paseDeSeguridad = localStorage.getItem("token_cine");
+    const opciones = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: paseDeSeguridad ? `Bearer ${paseDeSeguridad}` : "",
+      },
+    };
+
+    const direccion = "http://127.0.0.1:5002/cartelera";
+    const respuesta = await axios.get(direccion, opciones);
+
+    // Ajustamos la informacion para que sea facil de leer en la pantalla
+    datosCarteleras.value = respuesta.data.cartelera.map((elemento) => ({
+      id_cartelera: elemento.id_cartelera,
+      id_peliculaCartelera: elemento.pelicula,
+      id_cineCartelera: elemento.cine,
+      linkCine: elemento.link_cine,
+      fecha_horaCartelera: elemento.fecha_hora,
+      idioma_proyeccionCartelera: elemento.idioma,
+    }));
+  } catch (problema) {
+    console.error("Fallo al traer las carteleras:", problema);
+  }
+};
+
+// Apenas se abra la pantalla, traemos toda la informacion
+onMounted(() => {
+  cargarPeliculas();
+  cargarSeries();
+  cargarCines();
+  cargarCarteleras();
+});
+
+// ==========================================
+// CONTROL DE LA VENTANA EMERGENTE (FORMULARIO)
+// ==========================================
+const modalVisible = ref(false);
+const esEdicion = ref(false); // Nos dice si estamos creando algo nuevo o modificando algo viejo
+const formulario = ref({}); // Aqui guardamos lo que el usuario escribe
+
+// Prepara un formulario en blanco para crear algo nuevo
 const abrirModalAgregar = () => {
   esEdicion.value = false;
+
   if (menuActivo.value === "peliculas") {
     formulario.value = {
-      id_pelicula: null,
+      id: null,
       titulo: "",
-      titulo_originalPelicula: "",
+      titulo_original: "",
       sinopsis: "",
       anio: new Date().getFullYear(),
-      actoresPelicula: "",
-      generoPelicula: "Otro",
-      idiomaPelicula: "Otro",
+      actores: [],
+      genero: "Otro",
+      idioma: "Otro",
       poster: "",
       lema: "",
       trailer: "",
     };
   } else if (menuActivo.value === "series") {
     formulario.value = {
-      id_serie: null,
-      tituloSerie: "",
-      titulo_originalSerie: "",
-      sinopsisSerie: "",
-      anio_lanzamientoSerie: new Date().getFullYear(),
-      temporadasSerie: 1,
-      actoresSerie: "",
-      generoSerie: "Otro",
-      idiomaSerie: "Otro",
+      id: null,
+      titulo: "",
+      titulo_original: "",
+      sinopsis: "",
+      anio: new Date().getFullYear(),
+      episodiosSerie: [],
+      actores: [],
+      genero: "Otro",
+      idioma: "Otro",
+      poster: "",
+      trailer: "",
     };
   } else if (menuActivo.value === "cines") {
     formulario.value = {
@@ -113,6 +201,7 @@ const abrirModalAgregar = () => {
       nombreCine: "",
       direccionCine: "",
       ciudadCine: "",
+      linkWeb: "",
     };
   } else if (menuActivo.value === "cartelera") {
     formulario.value = {
@@ -123,49 +212,202 @@ const abrirModalAgregar = () => {
       idioma_proyeccionCartelera: "Doblada al Espanol",
     };
   }
+
   modalVisible.value = true;
 };
 
-const abrirModalEditar = (item) => {
+// Prepara el formulario con la informacion de un elemento que queremos modificar
+const abrirModalEditar = (elemento) => {
   esEdicion.value = true;
-  formulario.value = { ...item };
+  // Hacemos una copia exacta para no alterar la lista original por accidente
+  formulario.value = JSON.parse(JSON.stringify(elemento));
+
+  // Ajustes especiales para que la informacion se vea bien en el formulario
+
+  // Convertimos el texto de actores en una lista real
+  let actoresBorrador = formulario.value.actores;
+  if (typeof actoresBorrador === "string") {
+    try {
+      actoresBorrador = JSON.parse(actoresBorrador);
+    } catch (e) {
+      actoresBorrador = [];
+    }
+  }
+  formulario.value.actores = Array.isArray(actoresBorrador)
+    ? actoresBorrador
+    : [];
+
+  //  Ajustes exclusivos para las series
+  if (menuActivo.value === "series") {
+    let episodiosBorrador = formulario.value.temporadas_info || [];
+    if (typeof episodiosBorrador === "string") {
+      try {
+        episodiosBorrador = JSON.parse(episodiosBorrador);
+      } catch (e) {
+        episodiosBorrador = [];
+      }
+    }
+    formulario.value.episodiosSerie = Array.isArray(episodiosBorrador)
+      ? episodiosBorrador
+      : [];
+    formulario.value.poster = formulario.value.imagenUrl || "";
+  }
+
+  //  Ajustes exclusivos para las funciones de cine
+  if (menuActivo.value === "cartelera") {
+    // Buscamos a que pelicula y a que cine corresponden los textos
+    const peliEncontrada = datosPeliculas.value.find(
+      (p) => p.titulo === elemento.id_peliculaCartelera,
+    );
+    const cineEncontrado = datosCines.value.find(
+      (c) => c.nombreCine === elemento.id_cineCartelera,
+    );
+
+    // Asignamos los numeros correspondientes para que las listas desplegables funcionen
+    formulario.value.id_peliculaCartelera = peliEncontrada
+      ? peliEncontrada.id
+      : "";
+    formulario.value.id_cineCartelera = cineEncontrado
+      ? cineEncontrado.id_cine
+      : "";
+
+    // Ponemos una letra T en la fecha para que el calendario del navegador la entienda
+    if (formulario.value.fecha_horaCartelera) {
+      formulario.value.fecha_horaCartelera =
+        formulario.value.fecha_horaCartelera.replace(" ", "T");
+    }
+  }
+
   modalVisible.value = true;
 };
 
 const cerrarModal = () => (modalVisible.value = false);
 
-// Guardar y actualizar la lista visualmente
-const guardarCambios = () => {
-  const listaRef = getArrayActivo();
-  const idKey = getIdKey();
-
-  if (esEdicion.value) {
-    // Buscamos el elemento y lo reemplazamos
-    const index = listaRef.value.findIndex(
-      (item) => item[idKey] === formulario.value[idKey],
-    );
-    if (index !== -1) {
-      listaRef.value[index] = { ...formulario.value };
+// ==========================================
+// GUARDAR LOS CAMBIOS EN EL SERVIDOR
+// ==========================================
+const guardarCambios = async () => {
+  try {
+    const paseDeSeguridad = localStorage.getItem("token_cine");
+    if (!paseDeSeguridad) {
+      alert("No tienes permisos de administrador.");
+      return;
     }
-  } else {
-    // Simulamos un ID auto-incremental y lo agregamos al arreglo
-    const maxId =
-      listaRef.value.length > 0
-        ? Math.max(...listaRef.value.map((item) => item[idKey]))
-        : 0;
-    formulario.value[idKey] = maxId + 1;
-    listaRef.value.push({ ...formulario.value });
-  }
 
-  cerrarModal();
+    const opciones = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${paseDeSeguridad}`,
+      },
+    };
+
+    if (menuActivo.value === "peliculas") {
+      const datosAEnviar = {
+        titulo: formulario.value.titulo,
+        titulo_original: formulario.value.titulo_original,
+        sinopsis: formulario.value.sinopsis,
+        anio: formulario.value.anio,
+        actores: formulario.value.actores,
+        genero: formulario.value.genero,
+        idioma: formulario.value.idioma,
+        poster: formulario.value.poster,
+        trailer: formulario.value.trailer,
+        lema: formulario.value.lema,
+      };
+
+      if (!esEdicion.value) {
+        const direccion = "http://127.0.0.1:5000/peliculas/agregar";
+        const respuesta = await axios.post(direccion, datosAEnviar, opciones);
+        alert(respuesta.data.mensaje || "Pelicula creada exitosamente");
+      } else {
+        const direccion = `http://127.0.0.1:5000/peliculas/editar/${formulario.value.id}`;
+        const respuesta = await axios.put(direccion, datosAEnviar, opciones);
+        alert(respuesta.data.mensaje || "Pelicula actualizada");
+      }
+      cerrarModal();
+      cargarPeliculas();
+    } else if (menuActivo.value === "series") {
+      const datosAEnviar = {
+        titulo: formulario.value.titulo,
+        titulo_original: formulario.value.titulo_original,
+        sinopsis: formulario.value.sinopsis,
+        anio: formulario.value.anio,
+        episodiosSerie: formulario.value.episodiosSerie,
+        actores: formulario.value.actores,
+        genero: formulario.value.genero,
+        idioma: formulario.value.idioma,
+        poster: formulario.value.poster,
+        trailer: formulario.value.trailer,
+      };
+
+      if (!esEdicion.value) {
+        const direccion = "http://127.0.0.1:5001/series";
+        const respuesta = await axios.post(direccion, datosAEnviar, opciones);
+        alert(respuesta.data.mensaje || "Serie creada exitosamente");
+      } else {
+        const direccion = `http://127.0.0.1:5001/series/${formulario.value.id}`;
+        const respuesta = await axios.put(direccion, datosAEnviar, opciones);
+        alert(respuesta.data.mensaje || "Serie actualizada");
+      }
+      cerrarModal();
+      cargarSeries();
+    } else if (menuActivo.value === "cines") {
+      const datosAEnviar = {
+        nombreCine: formulario.value.nombreCine,
+        direccionCine: formulario.value.direccionCine,
+        ciudadCine: formulario.value.ciudadCine,
+        linkWeb: formulario.value.linkWeb,
+      };
+
+      if (!esEdicion.value) {
+        const direccion = "http://127.0.0.1:5002/cines";
+        const respuesta = await axios.post(direccion, datosAEnviar, opciones);
+        alert(respuesta.data.mensaje || "Cine creado exitosamente");
+      } else {
+        const direccion = `http://127.0.0.1:5002/cines/${formulario.value.id_cine}`;
+        const respuesta = await axios.put(direccion, datosAEnviar, opciones);
+        alert(respuesta.data.mensaje || "Cine actualizado");
+      }
+      cerrarModal();
+      cargarCines();
+    } else if (menuActivo.value === "cartelera") {
+      const datosAEnviar = {
+        id_pelicula: formulario.value.id_peliculaCartelera,
+        id_cine: formulario.value.id_cineCartelera,
+        // Quitamos la letra T de la fecha para que la base de datos no tenga problemas
+        fecha_hora: formulario.value.fecha_horaCartelera.replace("T", " "),
+        idioma: formulario.value.idioma_proyeccionCartelera,
+      };
+
+      if (!esEdicion.value) {
+        const direccion = "http://127.0.0.1:5002/cartelera";
+        const respuesta = await axios.post(direccion, datosAEnviar, opciones);
+        alert(respuesta.data.mensaje || "Funcion programada exitosamente");
+      } else {
+        const direccion = `http://127.0.0.1:5002/cartelera/${formulario.value.id_cartelera}`;
+        const respuesta = await axios.put(direccion, datosAEnviar, opciones);
+        alert(respuesta.data.mensaje || "Funcion en cartelera actualizada");
+      }
+      cerrarModal();
+      cargarCarteleras();
+    }
+  } catch (problema) {
+    console.error("Error al guardar:", problema);
+    alert(
+      "Error: " + (problema.response?.data?.error || "Ocurrio un problema"),
+    );
+  }
 };
 
-
+// ==========================================
+// 7. BORRAR INFORMACION (ELIMINAR)
+// ==========================================
 const modalEliminarVisible = ref(false);
 const idAEliminar = ref(null);
 
-const solicitarEliminar = (id) => {
-  idAEliminar.value = id;
+// Muestra el mensaje para estar seguros antes de borrar
+const solicitarEliminar = (identificacion) => {
+  idAEliminar.value = identificacion;
   modalEliminarVisible.value = true;
 };
 
@@ -174,17 +416,114 @@ const cancelarEliminar = () => {
   idAEliminar.value = null;
 };
 
-//Eliminar de la lista visualmente
-const confirmarEliminar = () => {
-  const listaRef = getArrayActivo();
-  const idKey = getIdKey();
+// Borra definitivamente la informacion seleccionada
+const confirmarEliminar = async () => {
+  if (idAEliminar.value) {
+    try {
+      const paseDeSeguridad = localStorage.getItem("token_cine");
+      const opciones = {
+        headers: {
+          "x-api-key": "mi_super_api_key_fija_123",
+          Authorization: `Bearer ${paseDeSeguridad}`,
+        },
+      };
 
-  // Filtramos el array para dejar afuera el item eliminado
-  listaRef.value = listaRef.value.filter(
-    (item) => item[idKey] !== idAEliminar.value,
+      if (menuActivo.value === "peliculas") {
+        const direccion = `http://127.0.0.1:5000/peliculas/eliminar/${idAEliminar.value}`;
+        const respuesta = await axios.delete(direccion, opciones);
+        alert(respuesta.data.mensaje || "Pelicula eliminada");
+        cargarPeliculas();
+      } else if (menuActivo.value === "series") {
+        const direccion = `http://127.0.0.1:5001/series/${idAEliminar.value}`;
+        const respuesta = await axios.delete(direccion, opciones);
+        alert(respuesta.data.mensaje || "Serie eliminada");
+        cargarSeries();
+      } else if (menuActivo.value === "cines") {
+        const direccion = `http://127.0.0.1:5002/cines/${idAEliminar.value}`;
+        const respuesta = await axios.delete(direccion, opciones);
+        alert(respuesta.data.mensaje || "Cine eliminado");
+        cargarCines();
+      } else if (menuActivo.value === "cartelera") {
+        const direccion = `http://127.0.0.1:5002/cartelera/${idAEliminar.value}`;
+        const respuesta = await axios.delete(direccion, opciones);
+        alert(respuesta.data.mensaje || "Funcion eliminada");
+        cargarCarteleras();
+      }
+
+      cancelarEliminar();
+    } catch (problema) {
+      console.error("Error al eliminar:", problema);
+      alert(
+        "No se pudo eliminar: " +
+          (problema.response?.data?.error || "Ocurrio un problema"),
+      );
+    }
+  }
+};
+
+// ==========================================
+//  HERRAMIENTAS PARA ACTORES
+// ==========================================
+// aGREGA un espacio en blanco para registrar un nuevo actor
+const agregarActor = () => {
+  if (formulario.value.actores.length < 3) {
+    formulario.value.actores.push({ nombre: "", personaje: "", foto: "" });
+  }
+};
+
+// Quita un actor de la lista
+const eliminarActor = (posicion) => {
+  formulario.value.actores.splice(posicion, 1);
+};
+
+// Convierte la lista de actores en un texto ordenado por comas para mostrarlo en pantalla
+const formatearActores = (actores) => {
+  if (Array.isArray(actores)) {
+    return actores.map((actor) => actor.nombre).join(", ");
+  }
+  return actores || "";
+};
+
+// ==========================================
+// HERRAMIENTAS PARA SERIES Y CAPITULOS
+// ==========================================
+const agregarTemporada = () => {
+  const nuevoNumero = formulario.value.episodiosSerie.length + 1;
+  formulario.value.episodiosSerie.push({
+    id: nuevoNumero,
+    numero: nuevoNumero,
+    titulo: `Temporada ${nuevoNumero}`,
+    episodios: [],
+  });
+};
+
+const eliminarTemporada = (posicion) => {
+  formulario.value.episodiosSerie.splice(posicion, 1);
+};
+
+const agregarEpisodio = (posicionTemporada) => {
+  const temporada = formulario.value.episodiosSerie[posicionTemporada];
+  const nuevoNumero = temporada.episodios.length + 1;
+  temporada.episodios.push({
+    numero: nuevoNumero,
+    titulo: "",
+    duracion: "",
+  });
+};
+
+const eliminarEpisodio = (posicionTemporada, posicionEpisodio) => {
+  formulario.value.episodiosSerie[posicionTemporada].episodios.splice(
+    posicionEpisodio,
+    1,
   );
+};
 
-  cancelarEliminar();
+// Cuenta cuantas temporadas hay para mostrar el texto en pantalla
+const formatearTemporadas = (temporadas) => {
+  if (Array.isArray(temporadas)) {
+    return `${temporadas.length} Temporada(s)`;
+  }
+  return "0 Temporadas";
 };
 </script>
 
@@ -268,12 +607,14 @@ const confirmarEliminar = () => {
               <th>Nombre</th>
               <th>Dirección</th>
               <th>Ciudad</th>
+              <th>Sitio Web</th>
               <th class="texto-centro">Acciones</th>
             </tr>
             <tr v-else-if="menuActivo === 'cartelera'">
               <th>ID</th>
-              <th>Peli ID</th>
-              <th>Cine ID</th>
+              <th>Película</th>
+              <th>Cine</th>
+              <th>Sitio Web</th>
               <th>Fecha/Hora</th>
               <th>Idioma</th>
               <th class="texto-centro">Acciones</th>
@@ -291,31 +632,29 @@ const confirmarEliminar = () => {
               </td>
             </tr>
             <tr
-              v-for="item in listaActual"
-              :key="
-                item.id_pelicula ||
-                item.id_serie ||
-                item.id_cine ||
-                item.id_cartelera
-              "
+              v-for="item in listaPaginada"
+              :key="item.id || item.id_cine || item.id_cartelera"
             >
               <template v-if="menuActivo === 'peliculas'">
-                <td>#{{ item.id_pelicula }}</td>
+                <td>#{{ item.id }}</td>
                 <td class="font-bold truncar-texto">{{ item.titulo }}</td>
                 <td class="truncar-texto">
-                  {{ item.titulo_originalPelicula }}
+                  {{ item.titulo_original }}
                 </td>
                 <td class="truncar-texto" :title="item.sinopsis">
                   {{ item.sinopsis }}
                 </td>
                 <td>{{ item.anio }}</td>
-                <td class="truncar-texto" :title="item.actoresPelicula">
-                  {{ item.actoresPelicula }}
+                <td
+                  class="truncar-texto"
+                  :title="formatearActores(item.actores)"
+                >
+                  {{ formatearActores(item.actores) }}
                 </td>
                 <td>
-                  <span class="badge">{{ item.generoPelicula }}</span>
+                  <span class="badge">{{ item.genero }}</span>
                 </td>
-                <td>{{ item.idiomaPelicula }}</td>
+                <td>{{ item.idioma }}</td>
                 <td class="truncar-texto">
                   <a :href="item.poster" target="_blank">Link</a>
                 </td>
@@ -326,21 +665,28 @@ const confirmarEliminar = () => {
               </template>
 
               <template v-else-if="menuActivo === 'series'">
-                <td>#{{ item.id_serie }}</td>
-                <td class="font-bold truncar-texto">{{ item.tituloSerie }}</td>
-                <td class="truncar-texto">{{ item.titulo_originalSerie }}</td>
-                <td class="truncar-texto" :title="item.sinopsisSerie">
-                  {{ item.sinopsisSerie }}
+                <td>#{{ item.id }}</td>
+                <td class="font-bold truncar-texto">{{ item.titulo }}</td>
+                <td class="truncar-texto">
+                  {{ item.titulo_original }}
                 </td>
-                <td>{{ item.anio_lanzamientoSerie }}</td>
-                <td>{{ item.temporadasSerie }}</td>
-                <td class="truncar-texto" :title="item.actoresSerie">
-                  {{ item.actoresSerie }}
+                <td class="truncar-texto" :title="item.sinopsis">
+                  {{ item.sinopsis }}
+                </td>
+                <td>{{ item.anio }}</td>
+                <td>
+                  {{ formatearTemporadas(item.temporadas_info) }}
+                </td>
+                <td
+                  class="truncar-texto"
+                  :title="formatearActores(item.actores)"
+                >
+                  {{ formatearActores(item.actores) }}
                 </td>
                 <td>
-                  <span class="badge">{{ item.generoSerie }}</span>
+                  <span class="badge">{{ item.genero }}</span>
                 </td>
-                <td>{{ item.idiomaSerie }}</td>
+                <td>{{ item.idioma }}</td>
               </template>
 
               <template v-else-if="menuActivo === 'cines'">
@@ -348,13 +694,34 @@ const confirmarEliminar = () => {
                 <td class="font-bold">{{ item.nombreCine }}</td>
                 <td>{{ item.direccionCine }}</td>
                 <td>{{ item.ciudadCine }}</td>
+                <td>
+                  <a
+                    v-if="item.linkWeb"
+                    :href="item.linkWeb"
+                    target="_blank"
+                    style="color: #3b82f6; text-decoration: underline"
+                  >
+                    🌐 Ver Web
+                  </a>
+                  <span v-else style="color: gray">-</span>
+                </td>
               </template>
-
               <template v-else-if="menuActivo === 'cartelera'">
                 <td>#{{ item.id_cartelera }}</td>
-                <td>{{ item.id_peliculaCartelera }}</td>
+                <td class="font-bold">{{ item.id_peliculaCartelera }}</td>
                 <td>{{ item.id_cineCartelera }}</td>
-                <td>{{ item.fecha_horaCartelera }}</td>
+                <td>
+                  <a
+                    v-if="item.linkCine"
+                    :href="item.linkCine"
+                    target="_blank"
+                    style="color: #3b82f6; text-decoration: underline"
+                  >
+                    🌐 Visitar
+                  </a>
+                  <span v-else style="color: gray">-</span>
+                </td>
+                <td>{{ item.fecha_horaCartelera.replace("T", " ") }}</td>
                 <td>
                   <span class="badge">{{
                     item.idioma_proyeccionCartelera
@@ -369,10 +736,7 @@ const confirmarEliminar = () => {
                 <button
                   @click="
                     solicitarEliminar(
-                      item.id_pelicula ||
-                        item.id_serie ||
-                        item.id_cine ||
-                        item.id_cartelera,
+                      item.id || item.id_cine || item.id_cartelera,
                     )
                   "
                   class="btn-eliminar"
@@ -384,9 +748,30 @@ const confirmarEliminar = () => {
           </tbody>
         </table>
       </div>
+      <div class="paginacion-admin" v-if="totalPaginas > 1">
+        <button
+          @click="paginaActual--"
+          :disabled="paginaActual === 1"
+          class="btn-paginacion"
+        >
+          ⬅ Anterior
+        </button>
+
+        <span class="info-paginacion">
+          Página <strong>{{ paginaActual }}</strong> de
+          <strong>{{ totalPaginas }}</strong>
+        </span>
+
+        <button
+          @click="paginaActual++"
+          :disabled="paginaActual === totalPaginas"
+          class="btn-paginacion"
+        >
+          Siguiente ➡
+        </button>
+      </div>
     </main>
 
-    <!-- MODAL DE FORMULARIO -->
     <div class="overlay-modal" v-if="modalVisible">
       <div class="caja-modal scrollable">
         <h3>{{ esEdicion ? "Editar" : "Agregar" }} {{ menuActivo }}</h3>
@@ -394,28 +779,25 @@ const confirmarEliminar = () => {
         <form @submit.prevent="guardarCambios" class="formulario-modal">
           <template v-if="menuActivo === 'peliculas'">
             <div class="grupo-input">
-              <label>Título</label
-              ><input type="text" v-model="formulario.titulo" required />
+              <label>Título</label>
+              <input type="text" v-model="formulario.titulo" required />
             </div>
             <div class="grupo-input">
-              <label>Título Original</label
-              ><input
-                type="text"
-                v-model="formulario.titulo_originalPelicula"
-              />
+              <label>Título Original</label>
+              <input type="text" v-model="formulario.titulo_original" />
             </div>
             <div class="grupo-input">
-              <label>Sinopsis</label
-              ><textarea v-model="formulario.sinopsis" rows="3"></textarea>
+              <label>Sinopsis</label>
+              <textarea v-model="formulario.sinopsis" rows="3"></textarea>
             </div>
             <div class="fila-input">
               <div class="grupo-input flex-1">
-                <label>Año</label
-                ><input type="number" v-model="formulario.anio" />
+                <label>Año</label>
+                <input type="number" v-model="formulario.anio" />
               </div>
               <div class="grupo-input flex-1">
                 <label>Género</label>
-                <select v-model="formulario.generoPelicula">
+                <select v-model="formulario.genero">
                   <option
                     v-for="g in [
                       'Accion',
@@ -439,7 +821,7 @@ const confirmarEliminar = () => {
             </div>
             <div class="grupo-input">
               <label>Idioma</label>
-              <select v-model="formulario.idiomaPelicula">
+              <select v-model="formulario.idioma">
                 <option
                   v-for="i in [
                     'Espanol',
@@ -457,60 +839,185 @@ const confirmarEliminar = () => {
               </select>
             </div>
             <div class="grupo-input">
-              <label>Actores (Separados por coma)</label
-              ><textarea
-                v-model="formulario.actoresPelicula"
-                rows="2"
-              ></textarea>
+              <label>Actores (Máximo 3)</label>
+
+              <div
+                v-for="(actor, index) in formulario.actores"
+                :key="index"
+                style="
+                  display: flex;
+                  gap: 10px;
+                  margin-bottom: 10px;
+                  align-items: center;
+                "
+              >
+                <input
+                  type="text"
+                  v-model="actor.nombre"
+                  placeholder="Nombre real"
+                  required
+                />
+                <input
+                  type="text"
+                  v-model="actor.personaje"
+                  placeholder="Personaje"
+                  required
+                />
+                <input
+                  type="text"
+                  v-model="actor.foto"
+                  placeholder="URL de la Foto"
+                />
+
+                <button
+                  type="button"
+                  @click="eliminarActor(index)"
+                  class="btn-eliminar"
+                  style="padding: 0.5rem"
+                >
+                  X
+                </button>
+              </div>
+
+              <button
+                v-if="formulario.actores.length < 3"
+                type="button"
+                @click="agregarActor"
+                class="btn-primario"
+                style="font-size: 0.8rem; padding: 0.5rem"
+              >
+                + Añadir Actor
+              </button>
             </div>
             <div class="grupo-input">
-              <label>URL Póster</label
-              ><input type="text" v-model="formulario.poster" />
+              <label>URL Póster</label>
+              <input type="text" v-model="formulario.poster" />
             </div>
             <div class="grupo-input">
-              <label>Lema</label><input type="text" v-model="formulario.lema" />
+              <label>Lema</label>
+              <input type="text" v-model="formulario.lema" />
             </div>
             <div class="grupo-input">
-              <label>URL Tráiler</label
-              ><input type="text" v-model="formulario.trailer" />
+              <label>URL Tráiler</label>
+              <input type="text" v-model="formulario.trailer" />
             </div>
           </template>
 
           <template v-else-if="menuActivo === 'series'">
             <div class="grupo-input">
-              <label>Título de la Serie</label
-              ><input type="text" v-model="formulario.tituloSerie" required />
+              <label>Título de la Serie</label>
+              <input type="text" v-model="formulario.titulo" required />
             </div>
             <div class="grupo-input">
-              <label>Título Original</label
-              ><input type="text" v-model="formulario.titulo_originalSerie" />
+              <label>Título Original</label>
+              <input type="text" v-model="formulario.titulo_original" />
             </div>
             <div class="grupo-input">
-              <label>Sinopsis</label
-              ><textarea v-model="formulario.sinopsisSerie" rows="3"></textarea>
+              <label>Sinopsis</label>
+              <textarea v-model="formulario.sinopsis" rows="3"></textarea>
             </div>
             <div class="fila-input">
               <div class="grupo-input flex-1">
-                <label>Año de Lanzamiento</label
-                ><input
-                  type="number"
-                  v-model="formulario.anio_lanzamientoSerie"
-                />
+                <label>Año de Lanzamiento</label>
+                <input type="number" v-model="formulario.anio" />
               </div>
-              <div class="grupo-input flex-1">
-                <label>Temporadas</label
-                ><input
-                  type="number"
-                  v-model="formulario.temporadasSerie"
-                  min="1"
-                  required
-                />
+              <div class="grupo-input">
+                <label>Temporadas y Episodios</label>
+
+                <div
+                  v-for="(temp, tIndex) in formulario.episodiosSerie"
+                  :key="tIndex"
+                  style="
+                    border: 1px dashed #666;
+                    padding: 10px;
+                    margin-bottom: 15px;
+                    border-radius: 5px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      align-items: center;
+                      margin-bottom: 10px;
+                    "
+                  >
+                    <strong>{{ temp.titulo }}</strong>
+                    <button
+                      type="button"
+                      @click="eliminarTemporada(tIndex)"
+                      class="btn-eliminar"
+                      style="padding: 0.3rem"
+                    >
+                      Eliminar Temporada
+                    </button>
+                  </div>
+
+                  <div
+                    v-for="(ep, eIndex) in temp.episodios"
+                    :key="eIndex"
+                    style="
+                      display: flex;
+                      gap: 10px;
+                      margin-bottom: 8px;
+                      align-items: center;
+                    "
+                  >
+                    <input
+                      type="number"
+                      v-model="ep.numero"
+                      placeholder="Nº"
+                      style="width: 70px"
+                      required
+                    />
+                    <input
+                      type="text"
+                      v-model="ep.titulo"
+                      placeholder="Título del episodio"
+                      required
+                    />
+                    <input
+                      type="text"
+                      v-model="ep.duracion"
+                      placeholder="Duración (ej: 45 min)"
+                      style="width: 120px"
+                      required
+                    />
+
+                    <button
+                      type="button"
+                      @click="eliminarEpisodio(tIndex, eIndex)"
+                      class="btn-eliminar"
+                      style="padding: 0.3rem"
+                    >
+                      X
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    @click="agregarEpisodio(tIndex)"
+                    class="btn-primario"
+                    style="font-size: 0.8rem; padding: 0.4rem"
+                  >
+                    + Añadir Episodio
+                  </button>
+                </div>
+
+                <button
+                  type="button"
+                  @click="agregarTemporada"
+                  class="btn-primario"
+                  style="padding: 0.5rem"
+                >
+                  + Añadir Nueva Temporada
+                </button>
               </div>
             </div>
             <div class="fila-input">
               <div class="grupo-input flex-1">
                 <label>Género</label>
-                <select v-model="formulario.generoSerie">
+                <select v-model="formulario.genero">
                   <option
                     v-for="g in [
                       'Accion',
@@ -533,7 +1040,7 @@ const confirmarEliminar = () => {
               </div>
               <div class="grupo-input flex-1">
                 <label>Idioma</label>
-                <select v-model="formulario.idiomaSerie">
+                <select v-model="formulario.idioma">
                   <option
                     v-for="i in [
                       'Espanol',
@@ -552,51 +1059,123 @@ const confirmarEliminar = () => {
               </div>
             </div>
             <div class="grupo-input">
-              <label>Actores</label
-              ><textarea v-model="formulario.actoresSerie" rows="2"></textarea>
+              <label>Actores (Máximo 3)</label>
+
+              <div
+                v-for="(actor, index) in formulario.actores"
+                :key="index"
+                style="
+                  display: flex;
+                  gap: 10px;
+                  margin-bottom: 10px;
+                  align-items: center;
+                "
+              >
+                <input
+                  type="text"
+                  v-model="actor.nombre"
+                  placeholder="Nombre real"
+                  required
+                />
+                <input
+                  type="text"
+                  v-model="actor.personaje"
+                  placeholder="Personaje"
+                  required
+                />
+                <input
+                  type="text"
+                  v-model="actor.foto"
+                  placeholder="URL de la Foto"
+                />
+
+                <button
+                  type="button"
+                  @click="eliminarActor(index)"
+                  class="btn-eliminar"
+                  style="padding: 0.5rem"
+                >
+                  X
+                </button>
+              </div>
+
+              <button
+                v-if="formulario.actores.length < 3"
+                type="button"
+                @click="agregarActor"
+                class="btn-primario"
+                style="font-size: 0.8rem; padding: 0.5rem"
+              >
+                + Añadir Actor
+              </button>
+            </div>
+            <div class="grupo-input">
+              <label>URL Póster</label>
+              <input type="text" v-model="formulario.poster" />
+            </div>
+            <div class="grupo-input">
+              <label>URL Tráiler</label>
+              <input type="text" v-model="formulario.trailer" />
             </div>
           </template>
 
           <template v-else-if="menuActivo === 'cines'">
             <div class="grupo-input">
-              <label>Nombre del Cine</label
-              ><input type="text" v-model="formulario.nombreCine" required />
+              <label>Nombre del Cine</label>
+              <input type="text" v-model="formulario.nombreCine" required />
             </div>
             <div class="grupo-input">
-              <label>Dirección</label
-              ><input type="text" v-model="formulario.direccionCine" />
+              <label>Dirección</label>
+              <input type="text" v-model="formulario.direccionCine" />
             </div>
             <div class="grupo-input">
-              <label>Ciudad</label
-              ><input type="text" v-model="formulario.ciudadCine" />
+              <label>Ciudad</label>
+              <input type="text" v-model="formulario.ciudadCine" />
+            </div>
+            <div class="grupo-input">
+              <label>Sitio Web (URL)</label>
+              <input type="url" v-model="formulario.linkWeb" />
             </div>
           </template>
 
           <template v-else-if="menuActivo === 'cartelera'">
             <div class="grupo-input">
-              <label>ID Película</label
-              ><input
-                type="number"
-                v-model="formulario.id_peliculaCartelera"
-                required
-              />
+              <label>Película</label>
+              <select v-model.number="formulario.id_peliculaCartelera" required>
+                <option disabled value="">Seleccione una película</option>
+                <option
+                  v-for="peli in peliculas"
+                  :key="peli.id"
+                  :value="peli.id"
+                >
+                  {{ peli.titulo }}
+                </option>
+              </select>
             </div>
+
             <div class="grupo-input">
-              <label>ID Cine</label
-              ><input
-                type="number"
-                v-model="formulario.id_cineCartelera"
-                required
-              />
+              <label>Cine</label>
+              <select v-model.number="formulario.id_cineCartelera" required>
+                <option disabled value="">Seleccione un cine</option>
+                <option
+                  v-for="cine in cines"
+                  :key="cine.id_cine"
+                  :value="cine.id_cine"
+                >
+                  {{ cine.nombreCine }}
+                </option>
+              </select>
             </div>
+
             <div class="grupo-input">
-              <label>Fecha y Hora</label
-              ><input
+              <label>Fecha y Hora</label>
+              <input
                 type="datetime-local"
                 v-model="formulario.fecha_horaCartelera"
                 required
               />
             </div>
+
             <div class="grupo-input">
               <label>Idioma de Proyección</label>
               <select v-model="formulario.idioma_proyeccionCartelera" required>
@@ -617,7 +1196,6 @@ const confirmarEliminar = () => {
       </div>
     </div>
 
-    <!-- MODAL DE CONFIRMACIÓN DE ELIMINACIÓN -->
     <div class="overlay-modal" v-if="modalEliminarVisible">
       <div class="caja-modal modal-pequeno">
         <h3 style="color: #cc0000; margin-top: 0">¡Atención!</h3>
@@ -639,8 +1217,11 @@ const confirmarEliminar = () => {
 </template>
 
 <style scoped>
+/* ========================================== */
+/*  ESTRUCTURA PRINCIPAL DE LA PANTALLA     */
+/* ========================================== */
 
-
+/* Contenedor que abarca todo el espacio visible */
 .layout-admin {
   display: flex;
   min-height: 100vh;
@@ -652,6 +1233,12 @@ const confirmarEliminar = () => {
   width: 100%;
   z-index: 10;
 }
+
+/* ========================================== */
+/* Menu lateral     */
+/* ========================================== */
+
+/* La columna oscura de la izquierda */
 .sidebar {
   width: 260px;
   background-color: #1a1a1a;
@@ -661,16 +1248,20 @@ const confirmarEliminar = () => {
   padding: 2rem 0;
   flex-shrink: 0;
 }
+
 .logo-admin {
   padding: 0 2rem;
   margin-bottom: 3rem;
   color: #e50914;
 }
+
+/* Opciones del menu */
 .menu-lateral {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
 }
+
 .menu-lateral button {
   background: none;
   border: none;
@@ -682,28 +1273,43 @@ const confirmarEliminar = () => {
   transition: all 0.2s;
   border-left: 4px solid transparent;
 }
+
+/* Cuando el raton pasa por encima de un boton del menu */
 .menu-lateral button:hover {
   background-color: #333;
   color: white;
 }
+
+/* El boton del menu que esta seleccionado actualmente */
 .menu-lateral button.activo {
   background-color: #333;
   color: white;
   border-left: 4px solid #e50914;
   font-weight: bold;
 }
+
+/* Parte inferior del menu lateral */
 .sidebar-footer {
   padding: 0 2rem;
 }
+
+/* Enlace para regresar a la pagina principal */
 .btn-volver {
   color: #a0a0a0;
   text-decoration: none;
   font-size: 0.9rem;
   transition: color 0.2s;
 }
+
 .btn-volver:hover {
   color: white;
 }
+
+/* ========================================== */
+/* AREA CENTRAL DE TRABAJO                 */
+/* ========================================== */
+
+/* La parte derecha donde sale todo el contenido */
 .contenido-principal {
   flex-grow: 1;
   padding: 3rem;
@@ -711,6 +1317,8 @@ const confirmarEliminar = () => {
   display: flex;
   flex-direction: column;
 }
+
+/* El titulo y el boton principal de cada seccion */
 .cabecera-contenido {
   display: flex;
   justify-content: space-between;
@@ -718,28 +1326,23 @@ const confirmarEliminar = () => {
   margin-bottom: 2rem;
   flex-shrink: 0;
 }
+
 .titulo-seccion {
   margin: 0 0 0.5rem 0;
   font-size: 2rem;
   color: #333;
 }
+
 .subtitulo {
   margin: 0;
   color: #777;
 }
-.btn-primario {
-  background-color: #4a4a4a;
-  color: white;
-  border: none;
-  padding: 0.8rem 1.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-}
-.btn-primario:hover {
-  background-color: #333;
-}
 
+/* ========================================== */
+/* DISEÑO DE LAS TABLAS DE DATOS           */
+/* ========================================== */
+
+/* La caja blanca que envuelve a la tabla */
 .contenedor-tabla {
   background: white;
   border-radius: 8px;
@@ -747,18 +1350,23 @@ const confirmarEliminar = () => {
   overflow-x: auto;
   flex-grow: 1;
 }
+
 .tabla-admin {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
   white-space: nowrap;
 }
+
+/* Filas y columnas de la tabla */
 .tabla-admin th,
 .tabla-admin td {
   padding: 1rem;
   border-bottom: 1px solid #eee;
   font-size: 0.9rem;
 }
+
+/* La cabecera de la tabla que se queda fija al bajar */
 .tabla-admin th {
   background-color: #fafafa;
   color: #555;
@@ -768,12 +1376,15 @@ const confirmarEliminar = () => {
   z-index: 1;
 }
 
+/* Truco para cortar textos muy largos y ponerles puntos suspensivos */
 .truncar-texto {
   max-width: 150px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Muestra el texto completo al poner el raton encima */
 .truncar-texto:hover {
   white-space: normal;
   word-break: break-all;
@@ -785,40 +1396,17 @@ const confirmarEliminar = () => {
   padding: 0.5rem;
 }
 
+/* Textos de ayuda y adornos en la tabla */
 .font-bold {
   font-weight: bold;
   color: #222;
 }
+
 .texto-centro {
   text-align: center;
 }
-.celda-acciones {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-}
-.btn-editar,
-.btn-eliminar {
-  padding: 0.4rem 0.8rem;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.btn-editar {
-  background-color: #e0e0e0;
-  color: #333;
-}
-.btn-editar:hover {
-  background-color: #ccc;
-}
-.btn-eliminar {
-  background-color: #ffe6e6;
-  color: #cc0000;
-}
-.btn-eliminar:hover {
-  background-color: #ffcccc;
-}
+
+/* Etiquetas pequeñas grises (ej. para el idioma) */
 .badge {
   background: #e2e8f0;
   padding: 0.2rem 0.6rem;
@@ -827,7 +1415,64 @@ const confirmarEliminar = () => {
   color: #475569;
 }
 
-/* MODALES */
+/* ========================================== */
+/* BOTONES GLOBALES Y DE LA TABLA          */
+/* ========================================== */
+
+/* Boton principal oscuro (ej. "Agregar Pelicula") */
+.btn-primario {
+  background-color: #4a4a4a;
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.btn-primario:hover {
+  background-color: #333;
+}
+
+/* Contenedor para los botones de editar y borrar */
+.celda-acciones {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+.btn-editar,
+.btn-eliminar {
+  padding: 0.4rem 0.8rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.btn-editar {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+.btn-editar:hover {
+  background-color: #ccc;
+}
+
+.btn-eliminar {
+  background-color: #ffe6e6;
+  color: #cc0000;
+}
+
+.btn-eliminar:hover {
+  background-color: #ffcccc;
+}
+
+/* ========================================== */
+/* VENTANAS EMERGENTES (MODALES)           */
+/* ========================================== */
+
+/* El fondo oscuro transparente que cubre todo al abrir un formulario */
 .overlay-modal {
   position: fixed;
   top: 0;
@@ -840,6 +1485,8 @@ const confirmarEliminar = () => {
   justify-content: center;
   z-index: 100;
 }
+
+/* La caja blanca del formulario */
 .caja-modal {
   background: white;
   padding: 2rem;
@@ -848,34 +1495,48 @@ const confirmarEliminar = () => {
   max-width: 600px;
   max-height: 90vh;
 }
+
+/* Caja mas pequeña para preguntar si estas seguro de borrar algo */
 .modal-pequeno {
   max-width: 400px;
+}
 
-} /* Nuevo para confirmaciones */
+/* Permite hacer scroll si el formulario es muy largo */
 .scrollable {
   overflow-y: auto;
 }
+
+/* ========================================== */
+/* FORMULARIOS DENTRO DE LOS MODALES       */
+/* ========================================== */
 .formulario-modal {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
+
+/* Para poner dos cajas de texto en la misma linea */
 .fila-input {
   display: flex;
   gap: 1rem;
 }
+
 .flex-1 {
   flex: 1;
 }
+
+/* Agrupa el titulo y su caja de texto */
 .grupo-input {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
+
 .grupo-input label {
   font-weight: bold;
   font-size: 0.85rem;
 }
+
 .grupo-input input,
 .grupo-input select,
 .grupo-input textarea {
@@ -885,12 +1546,15 @@ const confirmarEliminar = () => {
   font-family: inherit;
   font-size: 0.9rem;
 }
+
+/* Botones al final del formulario */
 .acciones-modal {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 1rem;
 }
+
 .btn-cancelar {
   background: none;
   border: 1px solid #ccc;
@@ -898,6 +1562,7 @@ const confirmarEliminar = () => {
   cursor: pointer;
   border-radius: 4px;
 }
+
 .btn-guardar {
   background: #4a4a4a;
   color: white;
@@ -907,7 +1572,7 @@ const confirmarEliminar = () => {
   border-radius: 4px;
 }
 
-/* Nuevo Botón eliminar modal */
+/* Boton rojo fuerte para confirmar que quieres borrar algo */
 .btn-eliminar-confirmar {
   background: #cc0000;
   color: white;
@@ -917,7 +1582,49 @@ const confirmarEliminar = () => {
   border-radius: 4px;
   font-weight: bold;
 }
+
 .btn-eliminar-confirmar:hover {
   background: #990000;
+}
+
+/* ========================================== */
+/* CONTROLES DE PAGINAS (PAGINACION)       */
+/* ========================================== */
+/* La zona de los botones de Siguiente y Anterior */
+.paginacion-admin {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 1rem 0;
+}
+
+.btn-paginacion {
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  color: #374151;
+  transition: all 0.2s;
+}
+
+/* Color al pasar el raton (solo si el boton se puede usar) */
+.btn-paginacion:hover:not(:disabled) {
+  background-color: #e5e7eb;
+}
+
+/* Apariencia del boton cuando no hay mas paginas a donde ir */
+.btn-paginacion:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Texto que dice "Pagina 1 de 3" */
+.info-paginacion {
+  color: #4b5563;
+  font-size: 0.95rem;
 }
 </style>

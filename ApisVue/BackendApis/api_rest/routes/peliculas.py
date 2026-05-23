@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from pandas import DateOffset
 from utils.auth import require_api_key, require_jwt, require_role
 import json
 
@@ -6,8 +7,7 @@ import json
 peliculas_bp = Blueprint("peliculas_bp", __name__)
 
 
-# Traer TODAS las películas
-# Traer TODAS las películas
+# Traer TODAS las películas (Con promedio de calificación)
 @peliculas_bp.route("/peliculas", methods=["GET"])
 @require_api_key
 def obtener_peliculas():
@@ -15,11 +15,14 @@ def obtener_peliculas():
 
     try:
         cur = mysql.connection.cursor()
-        # ¡AÑADIMOS EL POSTER AL SELECT!
+        # AÑADIMOS EL LEFT JOIN PARA CALCULAR EL PROMEDIO DE ESTRELLAS
         cur.execute("""
-            SELECT id_pelicula, titulo, titulo_originalPelicula, sinopsis, 
-                   anio, actoresPelicula, generoPelicula, idiomaPelicula, poster 
-            FROM Peliculas
+            SELECT p.id_pelicula, p.titulo, p.titulo_originalPelicula, p.sinopsis, 
+                   p.anio, p.actoresPelicula, p.generoPelicula, p.idiomaPelicula, p.poster,
+                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion
+            FROM Peliculas p
+            LEFT JOIN Comentarios c ON p.id_pelicula = c.id_peliculaComentario
+            GROUP BY p.id_pelicula
             """)
         datos = cur.fetchall()
         cur.close()
@@ -36,7 +39,10 @@ def obtener_peliculas():
                     "actores": fila[5],
                     "genero": fila[6],
                     "idioma": fila[7],
-                    "poster": fila[8],  # <-- LO AÑADIMOS AL JSON
+                    "poster": fila[8],
+                    "calificacion": float(
+                        fila[9]
+                    ),  # <-- Agregamos la calificación al JSON
                 }
             )
 
@@ -45,31 +51,35 @@ def obtener_peliculas():
         return jsonify({"error": str(e)}), 500
 
 
-# Buscar UNA sola película por su ID
+# Buscar UNA sola película por su ID (Con promedio de calificación)
 @peliculas_bp.route("/peliculas/<int:id_pelicula>", methods=["GET"])
 @require_api_key
 def obtener_pelicula_por_id(id_pelicula):
     from app_peliculas import mysql
+    import json  # Ya lo tienes arriba en tu archivo, pero aseguramos
 
     try:
         cur = mysql.connection.cursor()
         cur.execute(
             """
-            SELECT id_pelicula, titulo, titulo_originalPelicula, sinopsis, 
-                   anio, actoresPelicula, generoPelicula, idiomaPelicula, 
-                   poster, lema, trailer 
-            FROM Peliculas
-            WHERE id_pelicula = %s
+            SELECT p.id_pelicula, p.titulo, p.titulo_originalPelicula, p.sinopsis, 
+                   p.anio, p.actoresPelicula, p.generoPelicula, p.idiomaPelicula, 
+                   p.poster, p.lema, p.trailer,
+                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion
+            FROM Peliculas p
+            LEFT JOIN Comentarios c ON p.id_pelicula = c.id_peliculaComentario
+            WHERE p.id_pelicula = %s
+            GROUP BY p.id_pelicula
             """,
             (id_pelicula,),
         )
-        fila = cur.fetchone()  # fetchone() porque solo esperamos UNA película
+        fila = cur.fetchone()
+        cur.close()
         cur.close()
 
         if not fila:
             return jsonify({"error": "Película no encontrada"}), 404
 
-    
         actores_lista = []
         if fila[5]:
             try:
@@ -83,12 +93,13 @@ def obtener_pelicula_por_id(id_pelicula):
             "titulo_original": fila[2],
             "sinopsis": fila[3],
             "anio": fila[4],
-            "actores": actores_lista, 
+            "actores": actores_lista,
             "genero": fila[6],
             "idioma": fila[7],
             "poster": fila[8],
             "lema": fila[9],
             "trailer": fila[10],
+            "calificacion": float(fila[11]),  # <-- Promedio extraído de la posición 11
         }
 
         return jsonify({"pelicula": pelicula}), 200
@@ -96,25 +107,20 @@ def obtener_pelicula_por_id(id_pelicula):
         return jsonify({"error": str(e)}), 500
 
 
-# Buscar películas por coincidencia parcial
-# ==========================================
-# ENDPOINTS DE BUSQUEDA Usando Query ?q=
-# ==========================================
-
-
-# Buscar películas por TÍTULO
+# Buscar películas por TÍTULO (Búsqueda por texto)
 @peliculas_bp.route("/peliculas/buscar", methods=["GET"])
 @require_api_key
 def buscar_por_titulo():
     from app_peliculas import mysql
 
-    titulo_buscado = request.args.get("q")
+    texto_buscado = request.args.get("q", "")
 
-    if not titulo_buscado:
+    # Si el usuario no mandó nada, devolvemos un error 400
+    if not texto_buscado.strip():
         return (
             jsonify(
                 {
-                    "error": "Debes enviar un término de búsqueda. Ejemplo: /peliculas/buscar?q=shrek"
+                    "error": "Debes enviar texto para buscar. Ejemplo: /peliculas/buscar?q=Batman"
                 }
             ),
             400,
@@ -122,15 +128,20 @@ def buscar_por_titulo():
 
     try:
         cur = mysql.connection.cursor()
-        # AÑADIMOS EL CAMPO 'poster' AL SELECT
+
+        # Usamos LIKE con comodines % para buscar si el texto está contenido en el título
+        # Tambien le agregamos el LEFT JOIN para que traiga la calificacion como los otros endpoints
         cur.execute(
             """
-            SELECT id_pelicula, titulo, titulo_originalPelicula, sinopsis, 
-                   anio, actoresPelicula, generoPelicula, idiomaPelicula, poster 
-            FROM Peliculas 
-            WHERE titulo LIKE %s
+            SELECT p.id_pelicula, p.titulo, p.titulo_originalPelicula, p.sinopsis, 
+                   p.anio, p.actoresPelicula, p.generoPelicula, p.idiomaPelicula, p.poster,
+                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion
+            FROM Peliculas p
+            LEFT JOIN Comentarios c ON p.id_pelicula = c.id_peliculaComentario
+            WHERE p.titulo LIKE %s OR p.titulo_originalPelicula LIKE %s
+            GROUP BY p.id_pelicula
             """,
-            (f"%{titulo_buscado}%",),
+            (f"%{texto_buscado}%", f"%{texto_buscado}%"),
         )
 
         datos = cur.fetchall()
@@ -148,7 +159,8 @@ def buscar_por_titulo():
                     "actores": fila[5],
                     "genero": fila[6],
                     "idioma": fila[7],
-                    "poster": fila[8],  # <-- AQUÍ ESTÁ EL PÓSTER
+                    "poster": fila[8],
+                    "calificacion": float(fila[9]),
                 }
             )
 
@@ -159,11 +171,9 @@ def buscar_por_titulo():
             )
 
         return jsonify({"peliculas": peliculas}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
-# Buscar películas por CATEGORÍA
 
 
 # Buscar películas por CATEGORÍA
@@ -212,7 +222,7 @@ def buscar_por_genero():
                     "actores": fila[5],
                     "genero": fila[6],
                     "idioma": fila[7],
-                    "poster": fila[8], 
+                    "poster": fila[8],
                 }
             )
 
@@ -238,29 +248,34 @@ def crear_pelicula():
     from app_peliculas import mysql
 
     datos = request.json
+
     if not datos or not datos.get("titulo") or not datos.get("anio"):
         return jsonify({"error": "El título y el año son obligatorios"}), 400
+
+    actores_lista = datos.get("actores", [])
+    actores_json = json.dumps(actores_lista)
 
     try:
         cur = mysql.connection.cursor()
         cur.execute(
             """
-            INSERT INTO Peliculas (titulo, titulo_originalPelicula, sinopsis, anio, 
-                                   actoresPelicula, generoPelicula, idiomaPelicula) 
+                INSERT INTO Peliculas (titulo, titulo_originalPelicula, sinopsis, anio, 
+                                    actoresPelicula, generoPelicula, idiomaPelicula) 
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """,
+            """,
             (
                 datos["titulo"],
                 datos.get("titulo_original", "No especificado"),
                 datos.get("sinopsis", ""),
                 datos["anio"],
-                datos.get("actores", ""),
+                actores_json,  # <--- AQUÍ ESTÁ LA MAGIA, usamos la variable ya convertida
                 datos.get("genero", "Otro"),
                 datos.get("idioma", "Otro"),
             ),
         )
         mysql.connection.commit()
         cur.close()
+
         return (
             jsonify(
                 {
@@ -270,52 +285,127 @@ def crear_pelicula():
             ),
             201,
         )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
     except Exception as e:
+        # Solo dejamos un bloque except
         return (
             jsonify({"error": "Error al registrar la película", "detalle": str(e)}),
             500,
         )
 
 
-# ---------------------------------------------------------------------------------------------------
-# -------------------AHORA LOS ENDPOINTS PARA FAVORITOS----------------------------------------------
-# ---------------------------------------------------------------------------------------------------
-
-
-# Agregar a favoritos
-
-
-@peliculas_bp.route("/favorito/add/<int:id_pelicula>", methods=["POST"])
+# ==========================================
+# ACTUALIZAR PELÍCULA (Admin)
+# ==========================================
+@peliculas_bp.route("/peliculas/editar/<int:id_pelicula>", methods=["PUT"])
 @require_api_key
 @require_jwt
-def agregar_favorito(id_pelicula):
+@require_role(["admin"])
+def editar_pelicula(id_pelicula):
     from app_peliculas import mysql
 
-    # SEGURIDAD: El ID viene del Token
-    id_usuario = request.current_user.get("id")
+    datos = request.json
+
+    if not datos or not datos.get("titulo") or not datos.get("anio"):
+        return jsonify({"error": "El título y el año son obligatorios"}), 400
+
+    actores_lista = datos.get("actores", [])
+    actores_json = json.dumps(actores_lista)
 
     try:
         cur = mysql.connection.cursor()
         cur.execute(
-            "INSERT INTO Favoritos (id_usuarioFavorito, id_peliculaFavorito) VALUES (%s, %s)",
+            """
+            UPDATE Peliculas 
+            SET titulo = %s, titulo_originalPelicula = %s, sinopsis = %s, anio = %s, 
+                actoresPelicula = %s, generoPelicula = %s, idiomaPelicula = %s
+            WHERE id_pelicula = %s
+            """,
+            (
+                datos["titulo"],
+                datos.get("titulo_original", "No especificado"),
+                datos.get("sinopsis", ""),
+                datos["anio"],
+                actores_json,
+                datos.get("genero", "Otro"),
+                datos.get("idioma", "Otro"),
+                id_pelicula,
+            ),
+        )
+        mysql.connection.commit()
+        cur.close()
+
+        return jsonify({"mensaje": "Película actualizada exitosamente"}), 200
+    except Exception as e:
+        return (
+            jsonify({"error": "Error al actualizar la película", "detalle": str(e)}),
+            500,
+        )
+
+
+# ==========================================
+# ELIMINAR PELÍCULA (Admin)
+# ==========================================
+@peliculas_bp.route("/peliculas/eliminar/<int:id_pelicula>", methods=["DELETE"])
+@require_api_key
+@require_jwt
+@require_role(["admin"])
+def eliminar_pelicula(id_pelicula):
+    from app_peliculas import mysql
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute("DELETE FROM Peliculas WHERE id_pelicula = %s", (id_pelicula,))
+        mysql.connection.commit()
+        cur.close()
+
+        return jsonify({"mensaje": "Película eliminada exitosamente"}), 200
+    except Exception as e:
+        return (
+            jsonify({"error": "Error al eliminar la película", "detalle": str(e)}),
+            500,
+        )
+
+
+# ---------------------------------------------------------------------------------------------------
+# ------------------- ENDPOINTS PARA FAVORITOS (CORREGIDO) ------------------------------------------
+# ---------------------------------------------------------------------------------------------------
+
+
+# ==========================================
+# 1. AÑADIR A FAVORITOS
+# ==========================================
+@peliculas_bp.route("/favoritos", methods=["POST"])
+@require_api_key
+@require_jwt
+def agregar_favorito():
+    from app_peliculas import mysql
+
+    id_usuario = request.current_user.get("id")
+    data = request.get_json()
+    id_pelicula = data.get("id_pelicula")
+
+    try:
+        cur = mysql.connection.cursor()
+        # Insertar ignorando si ya existe para evitar errores SQL
+        cur.execute(
+            """
+            INSERT IGNORE INTO Favoritos (id_usuarioFavorito, id_peliculaFavorito) 
+            VALUES (%s, %s)
+            """,
             (id_usuario, id_pelicula),
         )
         mysql.connection.commit()
         cur.close()
-        return jsonify({"mensaje": "Agregada a TUS favoritos"}), 201
+        return jsonify({"mensaje": "Añadido a favoritos"}), 201
     except Exception as e:
-        if "Duplicate entry" in str(e):
-            return jsonify({"error": "Ya está en tus favoritos"}), 409
         return jsonify({"error": str(e)}), 500
 
 
-# Mostrar favoritos de un usuario
-@peliculas_bp.route(
-    "/favoritos/mio", methods=["GET"]
-)  # Cambiado de /usuario/<id> a /mio
+# ==========================================
+# 2. MOSTRAR FAVORITOS DE UN USUARIO (CON CALIFICACIÓN REAL)
+# ==========================================
+@peliculas_bp.route("/favoritos/mio", methods=["GET"])
 @require_api_key
 @require_jwt
 def obtener_favoritos():
@@ -325,13 +415,23 @@ def obtener_favoritos():
 
     try:
         cur = mysql.connection.cursor()
+        # Hacemos un LEFT JOIN con la tabla Resenas (del puerto 5002) para promediar las calificaciones.
+        # Si la película no tiene reseñas aún, IFNULL le asignará 0.0 por defecto.
         cur.execute(
             """
-            SELECT p.id_pelicula, p.titulo, p.generoPelicula, f.fecha_agregado 
-            FROM Favoritos f
-            JOIN Peliculas p ON f.id_peliculaFavorito = p.id_pelicula
+            SELECT 
+                p.id_pelicula, 
+                p.titulo, 
+                p.generoPelicula, 
+                p.poster, 
+                f.fecha_agregado,
+                IFNULL(ROUND(AVG(r.calificacionComentario), 1), 0.0) AS promedio
+            FROM favoritos f
+            JOIN peliculas p ON f.id_peliculaFavorito = p.id_pelicula
+            LEFT JOIN webpeliculasDB.comentarios r ON p.id_pelicula = r.id_peliculaComentario
             WHERE f.id_usuarioFavorito = %s
-        """,
+            GROUP BY p.id_pelicula, p.titulo, p.generoPelicula, p.poster, f.fecha_agregado
+            """,
             (id_usuario,),
         )
         datos = cur.fetchall()
@@ -342,7 +442,11 @@ def obtener_favoritos():
                 "id_pelicula": f[0],
                 "titulo": f[1],
                 "genero": f[2],
-                "agregado_el": str(f[3]),
+                "poster": f[3],
+                "agregado_el": str(f[4]),
+                "calificacion": float(
+                    f[5]
+                ),  # ¡Aquí ya viaja el promedio real de la BD!
             }
             for f in datos
         ]
@@ -351,8 +455,10 @@ def obtener_favoritos():
         return jsonify({"error": str(e)}), 500
 
 
-# Eliminar de favoritos
-@peliculas_bp.route("/favorito/borrar/<int:id_pelicula>", methods=["DELETE"])
+# ==========================================
+# 3. ELIMINAR DE FAVORITOS
+# ==========================================
+@peliculas_bp.route("/favoritos/<int:id_pelicula>", methods=["DELETE"])
 @require_api_key
 @require_jwt
 def eliminar_favorito(id_pelicula):
@@ -367,8 +473,6 @@ def eliminar_favorito(id_pelicula):
             (id_usuario, id_pelicula),
         )
         mysql.connection.commit()
-        if cur.rowcount == 0:
-            return jsonify({"error": "No estaba en favoritos"}), 404
         cur.close()
         return jsonify({"mensaje": "Eliminado de favoritos"}), 200
     except Exception as e:
@@ -382,19 +486,15 @@ def eliminar_favorito(id_pelicula):
 @require_api_key
 @require_jwt
 def analitica_favoritos():
-    # Ya no necesitamos recibir id_usuario por la URL
     import pandas as pd
-    import matplotlib.pyplot as plt
     from app_peliculas import mysql
+    from flask import jsonify, request
 
-    # Extraemos el ID del dueño del token
     id_usuario = request.current_user.get("id")
     nombre_usuario = request.current_user.get("nombre")
 
     try:
         cur = mysql.connection.cursor()
-
-        # Consultamos directamente los géneros de los favoritos del usuario
         query = """
             SELECT p.generoPelicula 
             FROM Favoritos f
@@ -411,33 +511,25 @@ def analitica_favoritos():
                 404,
             )
 
-        # ANALÍTICA CON PANDAS
-        # Convertimos la lista de tuplas en un DataFrame
+        # 🐼 ANALÍTICA CON PANDAS
         df = pd.DataFrame(datos, columns=["genero"])
-        conteo_generos = df["genero"].value_counts()
 
-        # GRAFICA CON MATPLOTLIB
-        plt.figure(figsize=(6, 6))
-        plt.pie(
-            conteo_generos,
-            labels=conteo_generos.index,
-            autopct="%1.1f%%",
-            startangle=90,
-            colors=plt.cm.Paired.colors,
-        )
-        plt.title(f"Perfil de Cinéfilo: {nombre_usuario}")
+        # value_counts() cuenta cuántas veces se repite cada género.
+        # .to_dict() lo transforma en un formato legible para JavaScript: {"Acción": 5, "Drama": 2}
+        conteo_dict = df["genero"].value_counts().to_dict()
 
-        # Guardamos o mostramos (plt.show() abre ventana en el servidor)
-        print(f"Generando gráfica para {nombre_usuario}...")
-        plt.show()
+        # Encontramos el género que más se repite (la Moda)
+        genero_dominante = df["genero"].mode()[0] if not df.empty else "Otros"
 
+        # Retornamos todo calculado al Frontend
         return (
             jsonify(
                 {
                     "id_usuario": id_usuario,
                     "nombre": nombre_usuario,
-                    "mensaje": "Análisis completado exitosamente.",
                     "total_favoritos": len(df),
+                    "conteo_generos": conteo_dict,
+                    "genero_dominante": genero_dominante,
                 }
             ),
             200,
@@ -454,6 +546,7 @@ def analitica_favoritos():
 
 # Endpoint para mostrar el póster de una película aleatoriamente filtrando los nulls
 # En routes/peliculas.py — agrega esta ruta
+
 
 @peliculas_bp.route("/peliculas/poster-aleatorio", methods=["GET"])
 @require_api_key

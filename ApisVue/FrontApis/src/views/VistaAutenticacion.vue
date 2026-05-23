@@ -1,33 +1,58 @@
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
-import axios from 'axios'
+// ==========================================
+// HERRAMIENTAS NECESARIAS
+// ==========================================
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import axios from "axios";
 
-const router = useRouter()
+// Esto nos sirve para mandar al usuario a otra pagina de la web
+const router = useRouter();
 
-const esRegistro = ref(false)
-const cargando = ref(false)
-const mensajeVisual = ref({ texto: '', tipo: '' })
+// ==========================================
+// CAJAS PARA EL ESTADO DE LA PANTALLA
+// ==========================================
+// Nos dice si mostramos la pantalla de registrarse o la de entrar
+const esRegistro = ref(false);
 
+// Nos avisa si el servidor esta procesando la informacion
+const cargando = ref(false);
+
+// Para guardar el mensaje de exito o de error que vera el usuario
+const mensajeVisual = ref({ texto: "", tipo: "" });
+
+// ==========================================
+// CAJAS PARA GUARDAR LO QUE ESCRIBE EL USUARIO
+// ==========================================
 const formulario = ref({
-  nombreUsuario: '',
-  correo: '',
-  contrasena: '',
-})
+  nombreUsuario: "",
+  correo: "",
+  contrasena: "",
+});
 
+// ==========================================
+// FUNCION PARA CAMBIAR ENTRE ENTRAR Y REGISTRARSE
+// ==========================================
 const alternarModo = () => {
-  esRegistro.value = !esRegistro.value
-  formulario.value = { nombreUsuario: '', correo: '', contrasena: '' }
-  mensajeVisual.value = { texto: '', tipo: '' }
-}
+  esRegistro.value = !esRegistro.value;
 
+  // Limpiamos los textos escritos y los mensajes viejos
+  formulario.value = { nombreUsuario: "", correo: "", contrasena: "" };
+  mensajeVisual.value = { texto: "", tipo: "" };
+};
+
+// ==========================================
+// FUNCION PRINCIPAL PARA ENVIAR EL FORMULARIO
+// ==========================================
 const enviarFormulario = async () => {
-  cargando.value = true
-  mensajeVisual.value = { texto: '', tipo: '' }
+  // Empezamos a pensar y borramos cualquier aviso anterior
+  cargando.value = true;
+  mensajeVisual.value = { texto: "", tipo: "" };
 
-  // ARMAMOS EL XML DEPENDIENDO SI ES REGISTRO O LOGIN
-  let xmlSOAP = ''
+  // Aqui guardaremos el mensaje especial con etiquetas que entiende el servidor
+  let xmlSOAP = "";
 
+  // Preparamos el mensaje dependiendo de lo que quiera hacer el usuario
   if (esRegistro.value) {
     xmlSOAP = `<?xml version="1.0" encoding="utf-8"?>
       <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="spyne.api.autenticacion.Prueba">
@@ -38,7 +63,7 @@ const enviarFormulario = async () => {
             <tns:contrasenaUsuario>${formulario.value.contrasena}</tns:contrasenaUsuario>
           </tns:registrar_usuario>
         </soapenv:Body>
-      </soapenv:Envelope>`
+      </soapenv:Envelope>`;
   } else {
     xmlSOAP = `<?xml version="1.0" encoding="utf-8"?>
       <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="spyne.api.autenticacion.Prueba">
@@ -48,55 +73,62 @@ const enviarFormulario = async () => {
             <tns:contrasenaUsuario>${formulario.value.contrasena}</tns:contrasenaUsuario>
           </tns:iniciar_sesion>
         </soapenv:Body>
-      </soapenv:Envelope>`
+      </soapenv:Envelope>`;
   }
 
   try {
-    //ENVIAMOS LA PETICIÓN POST AL SERVIDOR SOAP
-    const respuesta = await axios.post('http://127.0.0.1:8000/', xmlSOAP, {
-      headers: { 'Content-Type': 'text/xml' },
-    })
+    // Enviamos el paquete de datos al servidor especial de contrasenas
+    const respuesta = await axios.post("http://127.0.0.1:8000/", xmlSOAP, {
+      headers: { "Content-Type": "text/xml" },
+    });
 
-    //LEEMOS EL XML DE RESPUESTA
-    const parser = new DOMParser()
-    const xmlDoc = parser.parseFromString(respuesta.data, 'text/xml')
+    // Herramienta para desarmar el paquete con etiquetas que nos devolvio el servidor
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(respuesta.data, "text/xml");
 
-    // textContent saca el texto plano (el token o el error) limpiando las etiquetas XML
-    const resultado = xmlDoc.documentElement.textContent.trim()
+    // Limpiamos las etiquetas y nos quedamos solo con el texto util (el pase o el error)
+    const resultado = xmlDoc.documentElement.textContent.trim();
 
-    // la logica de desicion
-    if (resultado.includes('Error')) {
-      mensajeVisual.value = { texto: resultado, tipo: 'error' }
+    // Revisamos que nos respondio el servidor para tomar una decision
+    if (resultado.includes("Error")) {
+      // Si la respuesta dice que hay un problema, lo mostramos en pantalla
+      mensajeVisual.value = { texto: resultado, tipo: "error" };
     } else {
       if (esRegistro.value) {
+        // Si se estaba registrando y todo salio bien, lo pasamos a la pantalla de entrar
         mensajeVisual.value = {
-          texto: '¡Registro exitoso! Por favor, inicia sesión.',
-          tipo: 'exito',
-        }
-        esRegistro.value = false 
-        formulario.value.contrasena = ''
+          texto: "¡Registro exitoso! Por favor, inicia sesion.",
+          tipo: "exito",
+        };
+        esRegistro.value = false;
+        formulario.value.contrasena = "";
       } else {
-        localStorage.setItem('token_cine', resultado)
-        // Redirigimos a la página principal
-        router.push('/')
+        // Si estaba entrando, guardamos su pase secreto en la memoria del navegador
+        localStorage.setItem("token_cine", resultado);
+
+        // Lo mandamos directo a la pagina de inicio de la web
+        router.push("/");
       }
     }
   } catch (error) {
-    console.error('Error SOAP:', error)
+    console.error("Error SOAP:", error.response ? error.response.data : error);
     mensajeVisual.value = {
-      texto: 'No se pudo conectar con el servidor de autenticación.',
-      tipo: 'error',
-    }
+      texto: "No se pudo conectar con el servidor de autenticacion.",
+      tipo: "error",
+    };
   } finally {
-    cargando.value = false
+    // Avisamos que ya terminamos todo el proceso
+    cargando.value = false;
   }
-}
+};
 </script>
 
 <template>
   <div class="vista-autenticacion">
     <div class="contenedor-formulario">
-      <h2 class="titulo">{{ esRegistro ? 'Crear una cuenta' : 'Bienvenido de nuevo' }}</h2>
+      <h2 class="titulo">
+        {{ esRegistro ? "Crear una cuenta" : "Bienvenido de nuevo" }}
+      </h2>
 
       <!-- Alerta visual para errores o casos exitosos -->
       <div v-if="mensajeVisual.texto" :class="['alerta', mensajeVisual.tipo]">
@@ -132,19 +164,26 @@ const enviarFormulario = async () => {
         </div>
 
         <button type="submit" class="btn-submit" :disabled="cargando">
-          {{ cargando ? 'Procesando...' : esRegistro ? 'Registrarse' : 'Iniciar Sesión' }}
+          {{
+            cargando
+              ? "Procesando..."
+              : esRegistro
+                ? "Registrarse"
+                : "Iniciar Sesión"
+          }}
         </button>
       </form>
 
       <div class="pie-formulario">
         <p>
-          {{ esRegistro ? '¿Ya tienes una cuenta?' : '¿No tienes cuenta?' }}
+          {{ esRegistro ? "¿Ya tienes una cuenta?" : "¿No tienes cuenta?" }}
           <button type="button" @click="alternarModo" class="btn-texto">
-            {{ esRegistro ? 'Inicia sesión aquí' : 'Regístrate' }}
+            {{ esRegistro ? "Inicia sesión aquí" : "Regístrate" }}
           </button>
         </p>
         <p class="terminos" v-if="esRegistro">
-          Al registrarte, aceptas nuestros Términos de Servicio y Política de Privacidad.
+          Al registrarte, aceptas nuestros Términos de Servicio y Política de
+          Privacidad.
         </p>
       </div>
     </div>
@@ -152,7 +191,6 @@ const enviarFormulario = async () => {
 </template>
 
 <style scoped>
-
 .vista-autenticacion {
   display: flex;
   justify-content: center;

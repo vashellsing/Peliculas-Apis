@@ -1,15 +1,58 @@
 <script setup>
-import { ref } from "vue";
+// ==========================================
+// IMPORTACIONES
+// ==========================================
+import { ref, computed, onMounted } from "vue";
+import axios from "axios";
 
-// --- DATOS DEL USUARIO ---
+// ==========================================
+// ESTADO GLOBAL DE LA VISTA
+// ==========================================
+const cargando = ref(false);
+const mensajeVisual = ref({ texto: "", tipo: "" });
+
 const usuario = ref({
-  nombre: "Cinéfilo Experto",
-  correo: "usuario@correo.com",
-  miembroDesde: "2023",
+  id: null,
+  nombre: "Cargando...",
+  correo: "Cargando...",
+  miembroDesde: "2026",
   avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
 });
 
-// --- EDICION DEL PERFIL ---
+// ==========================================
+// LÓGICA DE AUTENTICACIÓN Y SESIÓN
+// ==========================================
+const cargarDatosUsuarioDesdeToken = () => {
+  const token = localStorage.getItem("token_cine");
+  if (!token) return;
+
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+
+    const datosToken = JSON.parse(jsonPayload);
+
+    usuario.value.id = datosToken.id;
+    usuario.value.nombre = datosToken.nombre || "Cineasta";
+    usuario.value.correo = datosToken.correo || "sin_correo@cine.com";
+    usuario.value.avatarUrl =
+      datosToken.avatarUrl ||
+      "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix";
+    usuario.value.miembroDesde = datosToken.miembroDesde || "Reciente";
+  } catch (error) {
+    console.error("Error al decodificar el token de sesión:", error);
+  }
+};
+
+// ==========================================
+// LÓGICA DE EDICIÓN DE PERFIL (SOAP)
+// ==========================================
 const editando = ref(false);
 const formulario = ref({});
 
@@ -22,25 +65,134 @@ const cancelarEdicion = () => {
   editando.value = false;
 };
 
-const guardarCambios = () => {
-  usuario.value = { ...formulario.value };
-  editando.value = false;
-  console.log("Datos actualizados (Simulación):", usuario.value);
+const guardarCambios = async () => {
+  cargando.value = true;
+  mensajeVisual.value = { texto: "", tipo: "" };
+
+  const xmlSOAP = `<?xml version="1.0" encoding="utf-8"?>
+    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tns="spyne.api.autenticacion.Prueba">
+      <soapenv:Body>
+        <tns:actualizar_perfil>
+          <tns:id_usuario>${usuario.value.id}</tns:id_usuario>
+          <tns:nombreUsuario>${formulario.value.nombre}</tns:nombreUsuario>
+          <tns:correoUsuario>${formulario.value.correo}</tns:correoUsuario>
+          <tns:avatarUrl>${formulario.value.avatarUrl}</tns:avatarUrl>
+        </tns:actualizar_perfil>
+      </soapenv:Body>
+    </soapenv:Envelope>`;
+
+  try {
+    const respuesta = await axios.post("http://127.0.0.1:8000/", xmlSOAP, {
+      headers: { "Content-Type": "text/xml" },
+    });
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(respuesta.data, "text/xml");
+    const resultado = xmlDoc.documentElement.textContent.trim();
+
+    if (resultado.includes("Error")) {
+      mensajeVisual.value = { texto: resultado, tipo: "error" };
+    } else {
+      localStorage.setItem("token_cine", resultado);
+      mensajeVisual.value = {
+        texto: "¡Perfil actualizado con éxito en la base de datos!",
+        tipo: "exito",
+      };
+      cargarDatosUsuarioDesdeToken();
+      editando.value = false;
+    }
+  } catch (error) {
+    console.error(
+      "Error al actualizar:",
+      error.response ? error.response.data : error,
+    );
+    mensajeVisual.value = {
+      texto: "No se pudo guardar la información. Revisa la conexión.",
+      tipo: "error",
+    };
+  } finally {
+    cargando.value = false;
+  }
 };
 
-// --- ANALITICA ---
+// ==========================================
+// LÓGICA DE ANALÍTICAS (REST + PANDAS)
+// ==========================================
 const cargandoAnalitica = ref(false);
 const mostrarGrafica = ref(false);
 
-const solicitarAnalitica = () => {
+const datosGrafica = ref({
+  etiquetas: [],
+  valores: [],
+  generoDominante: "",
+});
+
+const solicitarAnalitica = async () => {
   cargandoAnalitica.value = true;
   mostrarGrafica.value = false;
 
-  setTimeout(() => {
-    cargandoAnalitica.value = false;
+  try {
+    const token = localStorage.getItem("token_cine");
+    const config = {
+      headers: {
+        "x-api-key": "mi_super_api_key_fija_123",
+        Authorization: `Bearer ${token}`,
+      },
+    };
+
+    const urlAnalitica = "http://127.0.0.1:5000/favoritos/analitica";
+    const respuesta = await axios.get(urlAnalitica, config);
+    const dataRecibida = respuesta.data;
+
+    datosGrafica.value.etiquetas = Object.keys(dataRecibida.conteo_generos);
+    datosGrafica.value.valores = Object.values(dataRecibida.conteo_generos);
+    datosGrafica.value.generoDominante = dataRecibida.genero_dominante;
+
     mostrarGrafica.value = true;
-  }, 1500);
+  } catch (error) {
+    console.error("Error al recopilar favoritos para analítica:", error);
+    if (error.response && error.response.status === 404) {
+      alert(error.response.data.mensaje);
+    } else {
+      alert("Hubo un error obteniendo tu historial de favoritos.");
+    }
+  } finally {
+    cargandoAnalitica.value = false;
+  }
 };
+
+const urlGraficaDinamica = computed(() => {
+  const chartConfig = {
+    type: "pie",
+    data: {
+      labels: datosGrafica.value.etiquetas,
+      datasets: [
+        {
+          data: datosGrafica.value.valores,
+          backgroundColor: [
+            "#e50914",
+            "#4a4a4a",
+            "#2e7d32",
+            "#0288d1",
+            "#f57c00",
+            "#7b1fa2",
+          ],
+        },
+      ],
+    },
+    options: {
+      legend: { position: "bottom" },
+    },
+  };
+  return `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
+});
+
+// ==========================================
+// 6. CICLO DE VIDA (Lanzadores iniciales)
+// ==========================================
+onMounted(() => {
+  cargarDatosUsuarioDesdeToken();
+});
 </script>
 
 <template>
@@ -91,7 +243,16 @@ const solicitarAnalitica = () => {
               >
                 Cancelar
               </button>
-              <button type="submit" class="btn-guardar">Guardar Cambios</button>
+              <button type="submit" :disabled="cargando" class="btn-guardar">
+                {{ cargando ? "Guardando..." : "Guardar Cambios" }}
+              </button>
+
+              <div
+                v-if="mensajeVisual.texto"
+                :class="['alerta', mensajeVisual.tipo]"
+              >
+                {{ mensajeVisual.texto }}
+              </div>
             </div>
           </form>
         </div>
@@ -118,14 +279,17 @@ const solicitarAnalitica = () => {
       <!-- RESULTADO GRAFICA -->
       <div v-if="mostrarGrafica" class="resultado-grafica">
         <h2>Tu Perfil de Espectador</h2>
+
         <img
-          src="https://quickchart.io/chart?c={type:'pie',data:{labels:['Ciencia Ficción','Acción','Drama'],datasets:[{data:[60,25,15]}]}}"
-          alt="Gráfico de géneros"
+          :src="urlGraficaDinamica"
+          alt="Gráfico de géneros reales"
           class="grafica-pastel"
         />
+
         <p class="resumen-analitica">
-          ¡Definitivamente eres un amante de la
-          <strong>Ciencia Ficción</strong>!
+          ¡Definitivamente eres un amante del género
+          <strong>{{ datosGrafica.generoDominante }}</strong
+          >!
         </p>
 
         <RouterLink to="/favoritos" class="btn-ir-favoritos">
@@ -137,7 +301,9 @@ const solicitarAnalitica = () => {
 </template>
 
 <style scoped>
-/* ESTILOS ORIGINALES */
+/* ==========================================
+   ESTRUCTURA PRINCIPAL
+   ========================================== */
 .vista-perfil {
   padding: 3rem 2rem;
   font-family: sans-serif;
@@ -148,6 +314,10 @@ const solicitarAnalitica = () => {
   max-width: 1000px;
   margin: 0 auto;
 }
+
+/* ==========================================
+   CABECERA Y DATOS DEL USUARIO
+   ========================================== */
 .cabecera-usuario {
   display: flex;
   align-items: flex-start;
@@ -188,7 +358,9 @@ const solicitarAnalitica = () => {
   color: #999;
 }
 
-/* NUEVOS ESTILOS PARA EDICION */
+/* ==========================================
+   MODO EDICIÓN (FORMULARIO Y BOTONES)
+   ========================================== */
 .btn-editar-perfil {
   margin-top: 1rem;
   background-color: #f0f0f0;
@@ -203,7 +375,6 @@ const solicitarAnalitica = () => {
 .btn-editar-perfil:hover {
   background-color: #e2e2e2;
 }
-
 .formulario-edicion {
   display: flex;
   flex-direction: column;
@@ -259,6 +430,9 @@ const solicitarAnalitica = () => {
   background: #333;
 }
 
+/* ==========================================
+   CAJA DE LLAMADO A LA ANALÍTICA
+   ========================================== */
 .caja-analitica {
   background-color: #1a1a1a;
   color: white;
@@ -299,6 +473,10 @@ const solicitarAnalitica = () => {
   color: #aaa;
   font-size: 0.9rem;
 }
+
+/* ==========================================
+   RESULTADOS Y GRÁFICA
+   ========================================== */
 .resultado-grafica {
   background-color: white;
   padding: 2rem;
@@ -343,6 +521,9 @@ const solicitarAnalitica = () => {
   background-color: #333;
 }
 
+/* ==========================================
+   ANIMACIONES
+   ========================================== */
 @keyframes aparecer {
   from {
     opacity: 0;
