@@ -19,7 +19,7 @@ def obtener_peliculas():
         cur.execute("""
             SELECT p.id_pelicula, p.titulo, p.titulo_originalPelicula, p.sinopsis, 
                    p.anio, p.actoresPelicula, p.generoPelicula, p.idiomaPelicula, p.poster,
-                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion
+                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion,p.lema, p.trailer
             FROM Peliculas p
             LEFT JOIN Comentarios c ON p.id_pelicula = c.id_peliculaComentario
             GROUP BY p.id_pelicula
@@ -40,9 +40,9 @@ def obtener_peliculas():
                     "genero": fila[6],
                     "idioma": fila[7],
                     "poster": fila[8],
-                    "calificacion": float(
-                        fila[9]
-                    ),  # <-- Agregamos la calificación al JSON
+                    "calificacion": float(fila[9]),
+                    "lema": fila[10],  # <-- Agregamos el lema al JSON
+                    "trailer": fila[11],  # <-- Agregamos el trailer al JSON
                 }
             )
 
