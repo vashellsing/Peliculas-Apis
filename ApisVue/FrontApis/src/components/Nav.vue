@@ -1,13 +1,16 @@
 <script setup>
+import { useAuthStore } from "@/stores/auth";
 import { useRouter } from "vue-router";
 
-// Esto cierra sesion
+const authStore = useAuthStore();
 const router = useRouter();
 
-const cerrarSesion = () => {
-  localStorage.removeItem("token_cine");
+// No necesitas computed() aquí porque los del store ya lo son
+// Los usas directamente: authStore.estaAutenticado, authStore.esAdmin
 
-  router.push("/");
+const cerrarSesion = () => {
+  authStore.limpiarToken(); // borra el token del store y del localStorage
+  router.push("/");         // regresa al inicio
 };
 </script>
 
@@ -21,33 +24,39 @@ const cerrarSesion = () => {
       <ul class="enlaces">
         <li><RouterLink to="/">Peliculas</RouterLink></li>
         <li><RouterLink to="/series">Series</RouterLink></li>
-        <li><RouterLink to="/favoritos">Favoritos</RouterLink></li>
+        
+        <!-- Favoritos solo tiene sentido estando autenticado -->
+        <li v-if="authStore.estaAutenticado">
+          <RouterLink to="/favoritos">Favoritos</RouterLink>
+        </li>
+        
         <li><RouterLink to="/generos">Generos</RouterLink></li>
 
-        <li>
-          <RouterLink
-            to="/admin"
-            style="text-decoration: none; color: #e50914; font-weight: bold"
-            >Admin</RouterLink
-          >
+        <!-- Admin solo aparece si el token dice que el rol es administrador -->
+        <li v-if="authStore.esAdmin">
+          <RouterLink to="/admin" style="color: #e50914; font-weight: bold">
+            Admin
+          </RouterLink>
         </li>
       </ul>
     </div>
 
     <div class="seccion-derecha">
-      <RouterLink
-        to="/perfil"
-        class="btn-secundario"
-        style="border-color: #e50914; color: #e50914"
-        >Mi Perfil</RouterLink
-      >
-      <RouterLink
-        to="/acceso"
-        class="btn-secundario"
-        style="text-decoration: none"
-        >Iniciar sesion</RouterLink
-      >
-      <button @click="cerrarSesion" class="btn-primario">Cerrar Sesion</button>
+      <!-- Bloque para usuario autenticado -->
+      <template v-if="authStore.estaAutenticado">
+        <RouterLink to="/perfil" class="btn-secundario" style="border-color: #e50914; color: #e50914">
+          Mi Perfil
+        </RouterLink>
+        <!-- Cerrar sesión es un botón, no un RouterLink, porque ejecuta lógica -->
+        <button class="btn-primario" @click="cerrarSesion">
+          Cerrar Sesión
+        </button>
+      </template>
+
+      <!-- Bloque para usuario no autenticado -->
+      <RouterLink v-else to="/acceso" class="btn-secundario">
+        Iniciar sesión
+      </RouterLink>
     </div>
   </nav>
 </template>
