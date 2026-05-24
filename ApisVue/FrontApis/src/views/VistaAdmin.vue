@@ -311,8 +311,9 @@ const guardarCambios = async () => {
         genero: formulario.value.genero,
         idioma: formulario.value.idioma,
         poster: formulario.value.poster,
-        trailer: formulario.value.trailer,
         lema: formulario.value.lema,
+        trailer: formulario.value.trailer,
+        
       };
 
       if (!esEdicion.value) {
