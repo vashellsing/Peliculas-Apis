@@ -1,6 +1,5 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
-import Swal from "sweetalert2";
 import axios from "axios";
 
 
