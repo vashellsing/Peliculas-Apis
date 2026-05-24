@@ -1,4 +1,5 @@
 <script setup>
+import { useAuthStore } from "@/stores/auth";
 // ==========================================
 // HERRAMIENTAS NECESARIAS
 // ==========================================
@@ -6,6 +7,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import axios from "axios";
 
+const authStore = useAuthStore();
 // Esto nos sirve para mandar al usuario a otra pagina de la web
 const router = useRouter();
 
@@ -104,10 +106,8 @@ const enviarFormulario = async () => {
         formulario.value.contrasena = "";
       } else {
         // Si estaba entrando, guardamos su pase secreto en la memoria del navegador
-        localStorage.setItem("token_cine", resultado);
-
-        // Lo mandamos directo a la pagina de inicio de la web
-        router.push("/");
+        authStore.setToken(resultado); // guarda el token y notifica a toda la app
+        router.push("/");    
       }
     }
   } catch (error) {
