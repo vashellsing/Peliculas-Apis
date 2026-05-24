@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
+import Swal from "sweetalert2";
 import axios from "axios";
+
 
 // Esta variable nos dice en que pestana esta el administrador (peliculas, series, etc)
 const menuActivo = ref("peliculas");
