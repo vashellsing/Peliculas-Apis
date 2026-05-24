@@ -259,18 +259,31 @@ def crear_pelicula():
         cur = mysql.connection.cursor()
         cur.execute(
             """
-                INSERT INTO Peliculas (titulo, titulo_originalPelicula, sinopsis, anio, 
-                                    actoresPelicula, generoPelicula, idiomaPelicula) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """,
+    INSERT INTO Peliculas (
+        titulo,
+        titulo_originalPelicula,
+        sinopsis,
+        anio,
+        actoresPelicula,
+        generoPelicula,
+        idiomaPelicula,
+        poster,
+        lema,
+        trailer
+    )
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """,
             (
                 datos["titulo"],
                 datos.get("titulo_original", "No especificado"),
                 datos.get("sinopsis", ""),
                 datos["anio"],
-                actores_json,  # <--- AQUÍ ESTÁ LA MAGIA, usamos la variable ya convertida
+                actores_json,
                 datos.get("genero", "Otro"),
                 datos.get("idioma", "Otro"),
+                datos.get("poster", None),
+                datos.get("lema", None),
+                datos.get("trailer", None),
             ),
         )
         mysql.connection.commit()
@@ -316,11 +329,20 @@ def editar_pelicula(id_pelicula):
         cur = mysql.connection.cursor()
         cur.execute(
             """
-            UPDATE Peliculas 
-            SET titulo = %s, titulo_originalPelicula = %s, sinopsis = %s, anio = %s, 
-                actoresPelicula = %s, generoPelicula = %s, idiomaPelicula = %s
-            WHERE id_pelicula = %s
-            """,
+    UPDATE Peliculas
+    SET
+        titulo = %s,
+        titulo_originalPelicula = %s,
+        sinopsis = %s,
+        anio = %s,
+        actoresPelicula = %s,
+        generoPelicula = %s,
+        idiomaPelicula = %s,
+        poster = %s,
+        lema = %s,
+        trailer = %s
+    WHERE id_pelicula = %s
+    """,
             (
                 datos["titulo"],
                 datos.get("titulo_original", "No especificado"),
@@ -329,6 +351,9 @@ def editar_pelicula(id_pelicula):
                 actores_json,
                 datos.get("genero", "Otro"),
                 datos.get("idioma", "Otro"),
+                datos.get("poster", None),
+                datos.get("lema", None),
+                datos.get("trailer", None),
                 id_pelicula,
             ),
         )

@@ -313,8 +313,8 @@ const guardarCambios = async () => {
         genero: formulario.value.genero,
         idioma: formulario.value.idioma,
         poster: formulario.value.poster,
-        trailer: formulario.value.trailer,
         lema: formulario.value.lema,
+        trailer: formulario.value.trailer,
       };
 
       if (!esEdicion.value) {
@@ -334,6 +334,7 @@ const guardarCambios = async () => {
         titulo_original: formulario.value.titulo_original,
         sinopsis: formulario.value.sinopsis,
         anio: formulario.value.anio,
+        temporadas: formulario.value.temporadas,
         episodiosSerie: formulario.value.episodiosSerie,
         actores: formulario.value.actores,
         genero: formulario.value.genero,
@@ -520,13 +521,13 @@ const eliminarEpisodio = (posicionTemporada, posicionEpisodio) => {
   );
 };
 
-// Cuenta cuantas temporadas hay para mostrar el texto en pantalla
-const formatearTemporadas = (temporadas) => {
-  if (Array.isArray(temporadas)) {
-    return `${temporadas.length} Temporada(s)`;
-  }
-  return "0 Temporadas";
-};
+// // Cuenta cuantas temporadas hay para mostrar el texto en pantalla
+// const formatearTemporadas = (temporadas) => {
+//   if (Array.isArray(temporadas)) {
+//     return `${temporadas.length} Temporada(s)`;
+//   }
+//   return "0 Temporadas";
+// };
 </script>
 
 <template>
@@ -677,7 +678,7 @@ const formatearTemporadas = (temporadas) => {
                 </td>
                 <td>{{ item.anio }}</td>
                 <td>
-                  {{ formatearTemporadas(item.temporadas_info) }}
+                  {{ item.temporadas }}
                 </td>
                 <td
                   class="truncar-texto"
