@@ -41,7 +41,7 @@ const cargarDetalles = async () => {
 // VENTANAS DE MENSAJES Y AVISOS
 // ==========================================
 const textoModalMensaje = ref("");
-const tipoModalMensaje = ref("exito"); 
+const tipoModalMensaje = ref("exito");
 const mostrarModalMensaje = ref(false);
 
 const abrirModalMensaje = (texto, tipo = "exito") => {
@@ -564,10 +564,12 @@ onMounted(() => {
 
               <a
                 class="btn-boletos"
-                href="https://www.cinecolombia.com/"
+                :href="funcion.link_cine"
                 target="_blank"
-                >Ir al cine</a
+                rel="noopener noreferrer"
               >
+                Ir al cine
+              </a>
             </div>
           </div>
 
