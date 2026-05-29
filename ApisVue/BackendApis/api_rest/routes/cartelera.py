@@ -62,7 +62,7 @@ def buscar_por_pelicula(id_pelicula):
         # Asegúrate de que 'direccionCine' exista en tu tabla Cines. Si se llama distinto, cámbialo aquí.
         cur.execute(
             """
-            SELECT c.id_cartelera, p.titulo, cin.nombreCine, cin.ciudadCine, cin.direccionCine,
+            SELECT c.id_cartelera, p.titulo, cin.nombreCine, cin.ciudadCine, cin.direccionCine, cin.linkWeb,
                    c.fecha_horaCartelera, c.idioma_proyeccionCartelera 
             FROM Carteleras c
             INNER JOIN Peliculas p ON c.id_peliculaCartelera = p.id_pelicula
@@ -85,10 +85,11 @@ def buscar_por_pelicula(id_pelicula):
                     "nombreCine": fila[2],
                     "ciudadCine": fila[3],
                     "direccionCine": fila[4],
-                    "fecha_hora": fila[5].strftime(
+                    "link_cine": fila[5],
+                    "fecha_hora": fila[6].strftime(
                         "%Y-%m-%d %H:%M"
                     ),  # Le quité los segundos para que se vea mejor en pantalla
-                    "idioma": fila[6],
+                    "idioma": fila[7],
                 }
             )
 
@@ -384,9 +385,8 @@ def buscar_por_cine():
 # ==========================================
 # OBTENER TODOS LOS CINES (GET)
 # ==========================================
-# ==========================================
-# OBTENER TODOS LOS CINES (GET)
-# ==========================================
+
+
 @cartelera_bp.route("/cines", methods=["GET"])
 @require_api_key
 def obtener_cines():
