@@ -2,9 +2,12 @@
 // ==========================================
 // HERRAMIENTAS NECESARIAS
 // ==========================================
-import { ref, computed, onMounted } from "vue";
 import axios from "axios";
 import TarjetaSerie from "@/components/TarjetaSerie.vue";
+import { ref, computed, onMounted, watch } from "vue";
+import { useRoute } from "vue-router";
+
+const route = useRoute();
 
 // ==========================================
 // CAJAS PARA GUARDAR NUESTRA INFORMACION
@@ -21,27 +24,47 @@ const cargando = ref(true);
 // ==========================================
 const cargarSeries = async () => {
   try {
-    // La llave secreta para que el servidor nos deje pasar
+    cargando.value = true;
+
     const config = {
       headers: { "x-api-key": "mi_super_api_key_fija_123" },
     };
 
-    // La direccion exacta de donde sacamos las series
-    const url = "http://127.0.0.1:5001/series";
+    const tipoBusqueda = route.query.tipo || "serie";
 
-    // Tocamos la puerta del servidor y esperamos la respuesta
+    // Esta vista solo trabaja con series
+    if (tipoBusqueda !== "serie") {
+      seriesBackend.value = [];
+      return;
+    }
+
+    let url = "http://127.0.0.1:5001/series";
+
+    // Aquí luego conectaremos el endpoint de búsqueda si existe
+    // Por ahora, si vienen filtros, los dejamos listos para usar
+    if (route.query.titulo) {
+      url = `http://127.0.0.1:5001/series/buscar?q=${route.query.titulo}`;
+    } else if (route.query.categoria) {
+      url = `http://127.0.0.1:5001/series/categoria?q=${route.query.categoria}`;
+    }
+
     const respuesta = await axios.get(url, config);
-
-    // Guardamos las series en nuestra caja vacia
     seriesBackend.value = respuesta.data.series;
   } catch (error) {
-    // Si algo sale mal, lo anotamos aqui para revisarlo
     console.error("Error al cargar las series:", error);
+    seriesBackend.value = [];
   } finally {
-    // Al final, haya salido bien o mal, avisamos que ya terminamos de pensar
     cargando.value = false;
   }
 };
+
+watch(
+  () => route.query,
+  () => {
+    paginaActual.value = 1;
+    cargarSeries();
+  },
+);
 
 // Le decimos a la pagina: "Apenas abras, ve a traer las series"
 onMounted(() => {
