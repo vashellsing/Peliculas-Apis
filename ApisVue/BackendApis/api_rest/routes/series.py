@@ -52,6 +52,141 @@ def obtener_series():
 
 
 # ==========================================
+# Trae series por nombre)
+# ==========================================
+
+
+@series_bp.route("/series/buscar", methods=["GET"])
+@require_api_key
+def buscar_por_titulo():
+    from app_peliculas import mysql
+
+    texto_buscado = request.args.get("q", "")
+
+    # Si el usuario no mandó nada, devolvemos un error 400
+    if not texto_buscado.strip():
+        return (
+            jsonify(
+                {
+                    "error": "Debes enviar texto para buscar. Ejemplo: /peliculas/buscar?q=Batman"
+                }
+            ),
+            400,
+        )
+
+    try:
+        cur = mysql.connection.cursor()
+        cur.execute(
+            """
+            SELECT s.id_serie, s.tituloSerie, s.titulo_originalSerie, s.sinopsisSerie, 
+                   s.anio_lanzamientoSerie, s.actoresSerie, s.generoSerie, s.idiomaSerie, s.posterSerie,
+                   COALESCE(ROUND(AVG(c.calificacionComentario), 1), 0.0) AS calificacion
+            FROM Series s
+            LEFT JOIN Comentarios c ON s.id_serie = c.id_serieComentario
+            WHERE s.tituloSerie LIKE %s OR s.titulo_originalSerie LIKE %s
+            GROUP BY s.id_serie
+            """,
+            (f"%{texto_buscado}%", f"%{texto_buscado}%"),
+        )
+
+        datos = cur.fetchall()
+        cur.close()
+
+        series = []
+        for fila in datos:
+            series.append(
+                {
+                    "id": fila[0],
+                    "titulo": fila[1],
+                    "titulo_original": fila[2],
+                    "sinopsis": fila[3],
+                    "anio": fila[4],
+                    "actores": fila[5],
+                    "genero": fila[6],
+                    "idioma": fila[7],
+                    "imagenUrl": fila[8],
+                    "calificacion": float(fila[9]),
+                }
+            )
+
+        if not series:
+            return (
+                jsonify({"mensaje": "No se encontraron series con ese título"}),
+                404,
+            )
+
+        return jsonify({"series": series}), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
+# Trae series por categoría
+# ==========================================
+
+
+@series_bp.route("/series/categoria", methods=["GET"])
+@require_api_key
+def buscar_por_categoria():
+    from app_peliculas import mysql
+
+    genero_buscado = request.args.get("q")
+
+    if not genero_buscado:
+        return (
+            jsonify(
+                {
+                    "error": "Debes enviar una categoría. Ejemplo: /peliculas/categoria?q=Accion"
+                }
+            ),
+            400,
+        )
+
+    try:
+        cur = mysql.connection.cursor()
+        # AÑADIMOS EL CAMPO 'poster' AL SELECT
+        cur.execute(
+            """
+            SELECT id_serie, tituloSerie, titulo_originalSerie, sinopsisSerie, 
+                   anio_lanzamientoSerie, actoresSerie, generoSerie, idiomaSerie, posterSerie 
+            FROM Series 
+            WHERE generoSerie = %s
+            """,
+            (genero_buscado,),
+        )
+
+        datos = cur.fetchall()
+        cur.close()
+
+        series = []
+        for fila in datos:
+            series.append(
+                {
+                    "id": fila[0],
+                    "titulo": fila[1],
+                    "titulo_original": fila[2],
+                    "sinopsis": fila[3],
+                    "anio": fila[4],
+                    "actores": fila[5],
+                    "genero": fila[6],
+                    "idioma": fila[7],
+                    "imagenUrl": fila[8],
+                }
+            )
+
+        if not series:
+            return (
+                jsonify({"mensaje": "No se encontraron series en esa categoría"}),
+                404,
+            )
+
+        return jsonify({"series": series}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# ==========================================
 # Buscar UNA sola serie por su ID (Con promedio de calificación)
 # ==========================================
 @series_bp.route("/series/<int:id_serie>", methods=["GET"])

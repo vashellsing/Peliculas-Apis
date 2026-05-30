@@ -1,5 +1,4 @@
 <script setup>
-
 import { ref, onMounted, watch, computed } from "vue";
 import { useRoute } from "vue-router";
 import axios from "axios";
@@ -37,49 +36,45 @@ const elementosPorPagina = 8;
 
 const cargarPeliculas = async () => {
   try {
-    // Empezamos a pensar y borramos cualquier error viejo
     cargando.value = true;
     error.value = null;
 
-    // La llave secreta para que el servidor nos deje entrar
     const configuracion = {
       headers: { "x-api-key": "mi_super_api_key_fija_123" },
     };
 
-    // Direccion basica para pedir TODAS las peliculas
+    const tipoBusqueda = route.query.tipo || "pelicula";
+
+    // Esta vista solo debe trabajar con películas
+    if (tipoBusqueda !== "pelicula") {
+      peliculas.value = [];
+      cargando.value = false;
+      return;
+    }
+
     let url = "http://127.0.0.1:5000/peliculas";
 
-    // Si arriba en la direccion web dice que buscamos un titulo...
     if (route.query.titulo) {
       url = `http://127.0.0.1:5000/peliculas/buscar?q=${route.query.titulo}`;
-    }
-    // O si dice que buscamos por una categoria en especial...
-    else if (route.query.categoria) {
+    } else if (route.query.categoria) {
       url = `http://127.0.0.1:5000/peliculas/categoria?q=${route.query.categoria}`;
     }
 
-    // Tocamos la puerta del servidor y esperamos respuesta
     const respuesta = await axios.get(url, configuracion);
-
-    // Guardamos las peliculas en nuestra caja vacia
     peliculas.value = respuesta.data.peliculas;
   } catch (err) {
-    // Si algo falla, lo anotamos y ponemos un mensaje en pantalla
     console.error("Error al cargar cartelera:", err);
     error.value =
       err.response?.data?.mensaje ||
       "No se encontraron peliculas para tu busqueda.";
-
-    // Vaciamos la caja porque no encontramos nada
     peliculas.value = [];
   } finally {
-    // Al final, haya salido bien o mal, avisamos que ya no estamos pensando
     cargando.value = false;
   }
 };
 
 // ==========================================
-// LOGICA PARA MOSTRAR LAS PAGINAS 
+// LOGICA PARA MOSTRAR LAS PAGINAS
 // ==========================================
 
 // Calcula cuantas paginas necesitamos en total para todas las peliculas

@@ -1,67 +1,86 @@
 <script setup>
-import { ref, onMounted } from 'vue' 
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from "vue";
+import { useRouter, useRoute } from "vue-router";
 
-const router = useRouter()
+const router = useRouter();
+const route = useRoute();
 
-const textoBusqueda = ref('')
-const generoSeleccionado = ref('')
+const textoBusqueda = ref("");
+const generoSeleccionado = ref("");
 
-
-const urlPoster = ref(null)
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const urlPoster = ref(null);
+const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const cargarPosterAleatorio = async () => {
   try {
     const respuesta = await fetch(`${API_BASE}/peliculas/poster-aleatorio`, {
-      headers: { "x-api-key": "mi_super_api_key_fija_123" } 
-    })
-    if (!respuesta.ok) return
+      headers: { "x-api-key": "mi_super_api_key_fija_123" },
+    });
+    if (!respuesta.ok) return;
 
-    const datos = await respuesta.json()
-    if (!datos.poster) return
+    const datos = await respuesta.json();
+    if (!datos.poster) return;
 
-    const img = new Image()
-    img.onload = () => { urlPoster.value = datos.poster }
-    img.onerror = () => { }
-    img.src = datos.poster
-
+    const img = new Image();
+    img.onload = () => {
+      urlPoster.value = datos.poster;
+    };
+    img.onerror = () => {};
+    img.src = datos.poster;
   } catch (error) {
-    console.error('Poster aleatorio no disponible:', error)
+    console.error("Poster aleatorio no disponible:", error);
   }
-}
+};
 
 onMounted(() => {
-  cargarPosterAleatorio()
-})
+  cargarPosterAleatorio();
+});
 
+const obtenerTipoBusqueda = () => {
+  if (
+    route.path.startsWith("/series") ||
+    route.path.startsWith("/serieDetalle")
+  ) {
+    return "serie";
+  }
+
+  return "pelicula";
+};
 
 const realizarBusqueda = () => {
-  const queryParams = {}
+  const queryParams = {};
 
-  if (textoBusqueda.value.trim() !== '') {
-    queryParams.titulo = textoBusqueda.value.trim()
+  if (textoBusqueda.value.trim() !== "") {
+    queryParams.titulo = textoBusqueda.value.trim();
   }
 
-  if (generoSeleccionado.value !== '') {
-    queryParams.categoria = generoSeleccionado.value
+  if (generoSeleccionado.value !== "") {
+    queryParams.categoria = generoSeleccionado.value;
   }
 
-  router.push({ path: '/', query: queryParams })
-  textoBusqueda.value = ''
-}
+  queryParams.tipo = obtenerTipoBusqueda();
+
+  router.push({
+    path: queryParams.tipo === "serie" ? "/series" : "/",
+    query: queryParams,
+  });
+  textoBusqueda.value = "";
+};
 </script>
 
 <template>
-
   <section
     class="seccion-busqueda"
-    :style="urlPoster ? {
-      backgroundImage: `url(${urlPoster})`,
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat'
-    } : {}"
+    :style="
+      urlPoster
+        ? {
+            backgroundImage: `url(${urlPoster})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+          }
+        : {}
+    "
   >
     <!-- solo aparece cuando hay imagen, para mantener el texto legible -->
     <div v-if="urlPoster" class="overlay"></div>
@@ -99,11 +118,11 @@ const realizarBusqueda = () => {
 <style scoped>
 .seccion-busqueda {
   padding: 3rem 2rem;
-  background-color: #f5f5f5; 
+  background-color: #f5f5f5;
   display: flex;
   justify-content: center;
   font-family: sans-serif;
-  position: relative; 
+  position: relative;
 }
 
 /* Overlay oscuro solo cuando hay imagen de fondo */
